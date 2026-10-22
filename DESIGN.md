@@ -1,6 +1,6 @@
-# zenon.nvim design review
+# zenon design review
 
-zenon.nvim should make writing comfortable while other splits and tools remain
+zenon should make writing comfortable while other splits and tools remain
 usable. The main engineering risk is maintaining a centered text area without
 breaking normal window navigation. Prove that layout behavior before building
 integrations or a large configuration surface.
@@ -10,6 +10,9 @@ as proposals below are open for discussion.
 
 ## Confirmed goals
 
+- Use the name zenon and implement it from the requirements with original code.
+  The reference plugin may inform editor settings and behavior; its implementation
+  must not be copied, translated, or mechanically adapted.
 - Default to 50% width, with configurable minimum and maximum bounds and runtime
   changes. The current personal configuration uses 45%; the requested new
   default is 50%.
@@ -51,6 +54,12 @@ Neither that configuration nor upstream changes `j`/`k` mappings, `wrap`,
 `linebreak`, `breakindent`, `spell`, or `textwidth`. A narrower text area can
 change wrapping without changing navigation settings. Explicit writing behavior
 needs a separate choice.
+
+The broader personal Neovim configuration already maps plain `j` and `k` to
+`gj` and `gk`, while preserving file-line movement when a count is supplied.
+It also sets `linebreak`, `breakindent`, `showbreak="↪"`, and `scrolloff=10`.
+An autocmd enables wrapping and spell checking for Markdown, text, and commit
+messages. Those settings come from the user's configuration, outside zen-mode.
 
 ## Buffer intent and window layout
 
@@ -143,6 +152,37 @@ needs a language choice. Mapping `j` and `k` to visual lines changes navigation
 and macros; it should be an explicit option. Do not change hard wrapping or
 formatting rules implicitly.
 
+### Wrapped text navigation proposal
+
+A file line can occupy several screen rows. Native `j` and `k` move through
+file lines; `gj` and `gk` move through screen rows. For writing, propose the
+same count-aware behavior already present in the user's configuration:
+
+| Input | Proposed behavior while zenon is enabled |
+| --- | --- |
+| `j` / `k` | Move one visible row down / up. |
+| `5j` / `5k` | Preserve movement through five file lines. |
+| `5gj` / `5gk` | Move through five visible rows using native motions. |
+| `g0` / `g^` / `g$` | Native start / first nonblank / end of the visible row. |
+
+Keep `0`, `^`, and `$` unchanged for navigating the complete file line. Preserve
+operator-pending mappings so commands such as `dj` retain their linewise meaning.
+Visual selection behavior, arrow keys, and Insert-mode navigation need separate
+choices. Do not silently overwrite user-defined buffer mappings. Any zenon
+mapping must respect its buffer scope and restore previous mappings on disable.
+
+Propose `wrap=true`, `linebreak=true`, and `breakindent=true` as a configurable
+writing profile. These change display rather than inserting newlines into the
+file. Preserve the user's continuation marker or make it configurable. A modest
+`scrolloff`, such as 5 to 10 rows, keeps surrounding context visible.
+`smoothscroll` is an optional screen-row scrolling setting, rather than an
+animation; verify its limitations on supported Neovim versions before making
+it a default. Keep `textwidth` and formatting rules unchanged.
+
+These are proposals, not implemented or approved defaults. See Neovim's
+[motion reference](https://neovim.io/doc/user/motion/) and
+[option reference](https://neovim.io/doc/user/options/).
+
 Global options such as `ruler`, `showcmd`, and `laststatus` affect other splits.
 Keep global UI changes opt-in. If enabled with multiple zen views, save once and
 restore when the final view closes. For each option, restore the previous value
@@ -155,9 +195,9 @@ Never close or wipe the user's buffer as part of layout cleanup.
 
 ## Layout prototype
 
-A full editor overlay has the wrong interaction model for the split and sidebar
-requirements. Simply removing upstream's close-on-focus handler leaves the
-overlay covering other windows.
+A full editor overlay would obscure other windows and conflict with the split
+and sidebar requirements. The original implementation should confine the zen
+layout to the host split.
 
 Prototype a layout confined to the host split and compare it with native padding
 splits. A float can preserve surrounding split geometry, but creates challenges
@@ -237,18 +277,16 @@ cover focus and navigation; headless checks alone cannot establish tmux behavior
 
 ## License options
 
-Upstream uses [Apache License 2.0](https://github.com/folke/zen-mode.nvim/blob/8564ce6d29ec7554eb9df578efa882d33b3c23a7/LICENSE).
-It permits cloning, modifying, and distributing code, including commercial use.
-For redistributed code, include the license, retain applicable notices, mark
-modified files, and carry forward applicable upstream NOTICE attribution if one
-exists. No NOTICE file was found in the reviewed checkout. A fresh Git history
-does not remove these obligations. See [Apache 2.0 section 4](https://www.apache.org/licenses/LICENSE-2.0).
+zenon will use original code. The reference plugin's Apache 2.0 license does
+not require zenon to adopt Apache 2.0 simply for using similar editor options
+or behavior. Keep its source outside the published tree and implement from the
+requirements rather than translating or adapting that source.
 
 | License | When it fits |
 | --- | --- |
-| Apache 2.0 | Recommended if adapting upstream. Permissive, with an explicit contributor patent grant. One license is easier to maintain. |
-| MIT | A short permissive choice for original code. Imported Apache material still needs its Apache terms and notices; an MIT project license does not replace them. |
-| GPL 3.0 | Consider if distributed derivatives should stay under the same license with corresponding source available. Apache 2.0 code can be included in a GPL 3.0 derivative while preserving Apache obligations. |
+| MIT | A reasonable simple choice for this original implementation. Permissive, with a short notice requirement. |
+| Apache 2.0 | Permissive, with an explicit contributor patent grant. Choose it if that protection matters. |
+| GPL 3.0 | Consider if distributed derivatives should stay under the same license with corresponding source available. |
 
 Apache and MIT allow proprietary derivatives; open source does not itself mean
 that downstream changes must be published. GPL obligations generally attach to
@@ -258,10 +296,9 @@ Sources: [MIT text](https://opensource.org/license/mit),
 [Apache licensing FAQ](https://www.apache.org/foundation/license-faq.html), and
 [GPL 3.0 terms](https://choosealicense.com/licenses/gpl-3.0/).
 
-The project license is still a decision for the owner. Keep the local reference
-checkout out of the published tree. Prefer implementing the different lifecycle
-and layout deliberately over mechanically renaming the upstream plugin. Any
-adapted files need an origin record and modification notice before distribution.
+The project license is still a decision for the owner. A public release must
+include the selected license. Any separately approved third-party material
+introduced later still needs its applicable terms and notices.
 
 ## Decisions before implementation
 

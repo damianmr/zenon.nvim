@@ -1,8 +1,7 @@
-# Working on zenon.nvim
+# Working on zenon
 
-zenon.nvim is a Neovim plugin for writing with a centered text area. The GitHub
-repository is `damianmr/zenon`; the Lua module and user-facing name are `zenon`
-and `zenon.nvim`.
+zenon is a Neovim plugin for writing with a centered text area. The GitHub
+repository is `damianmr/zenon`; the Lua module and user-facing name are `zenon`.
 
 ## Project context
 
@@ -19,6 +18,9 @@ and `zenon.nvim`.
 
 ## Product constraints
 
+- Implement zenon from the user's requirements with original code. Use
+  zen-mode only as a reference for behavior and editor option choices. Do not
+  copy, translate, or mechanically adapt its implementation.
 - Keep the core independent of tmux, terminal emulators, GUIs, and other plugins.
   Expose Lua lifecycle hooks for user-defined integrations.
 - Preserve normal use of other splits, sidebars, and floating tools.
@@ -54,11 +56,11 @@ and `zenon.nvim`.
 
 ## Licensing
 
-The project license is pending. Apache 2.0 is recommended in `DESIGN.md`.
-Before copying upstream material, settle the project license and preserve all
-applicable license and attribution notices. Mark files modified from upstream
-and record the source revision. Do not present Apache-licensed upstream code as
-solely MIT-licensed code.
+The project license is pending. The implementation must be original, so the
+reference plugin's license does not determine zenon's license. `DESIGN.md`
+compares MIT, Apache 2.0, and GPL 3.0. Keep the reference checkout outside the
+published tree. Preserve applicable notices for any separately approved
+third-party material introduced later.
 
 ## Communication and GitHub
 

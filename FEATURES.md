@@ -1,4 +1,7 @@
-- This plugin is called zenon.nvim, it's to enable zen mode during writing.
+- This plugin is called zenon, it's to enable zen mode during writing.
+
+- Implement it from these requirements with original code. Use zen-mode only
+  as inspiration for editor settings and behavior; do not copy its code.
 
 - I don't want tmux integration or code that is intended to address a specific environment. If that's needed, the user must be able to set it up through an extension hook that our plugin executes.
 
