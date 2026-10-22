@@ -5,8 +5,8 @@ repository is `damianmr/zenon`; the Lua module and user-facing name are `zenon`.
 
 ## Project context
 
-- Read `FEATURES.md` for the original requirements and `DESIGN.md` for the
-  implemented architecture and verification approach.
+- Read `README.md` for supported behavior and configuration, and `DESIGN.md`
+  for the implemented architecture and verification approach.
 - Run `make test` for isolated headless Neovim integration tests. Run
   `make check` with StyLua 2.6.0 for formatting.
 - Keep the README and help file aligned with working behavior.

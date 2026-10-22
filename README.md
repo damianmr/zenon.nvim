@@ -173,7 +173,7 @@ zenon does not enable it. Use hooks for Twilight or environment-specific behavio
 Run `make test` for isolated headless Neovim integration tests, `make check` for
 StyLua checks, and `:checkhealth zenon` inside Neovim for basic diagnostics.
 StyLua 2.6.0 is used in CI. See [DESIGN.md](DESIGN.md) for layout decisions and
-[FEATURES.md](FEATURES.md) for the requirements.
+the verification approach.
 
 ## License
 
