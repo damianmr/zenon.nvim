@@ -55,7 +55,7 @@ gutters. Available space wins when the split is narrower than the minimum.
 require("zenon").setup({
   width = 50,             -- Percentage of the current split, from >0 to 100.
   min_width = 80,         -- Minimum text columns, when there is enough room.
-  max_width = 160,        -- Maximum text columns.
+  max_width = nil,        -- No maximum; set a column count to limit width.
   showbreak = "↪",       -- Wrapped continuation marker; false disables it.
   scrolloff = 10,         -- Screen rows of context above and below the cursor.
   breakindent = true,     -- Continue wrapped rows at the line's indentation.
@@ -77,6 +77,10 @@ require("zenon").setup({
   hooks = {},
 })
 ```
+
+Omit `max_width` for no maximum beyond the available space. To remove a maximum
+inherited from setup or an earlier `enable` call, use
+`require("zenon").enable({ max_width = false })`.
 
 Only the empty margins are dimmed. Other buffers keep their colors and content.
 Transparent themes stay transparent. Custom margins follow colorscheme changes.

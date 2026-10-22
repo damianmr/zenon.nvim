@@ -23,7 +23,7 @@ Setup is optional. Defaults: >lua
     require("zenon").setup({
       width = 50,
       min_width = 80,
-      max_width = 160,
+      max_width = nil,        -- no maximum
       showbreak = "↪",       -- false or a string
       scrolloff = 10,
       breakindent = true,
@@ -55,8 +55,13 @@ window_options.spell=true can enable spell checking in zenon views.
 ruler is global and remains configured until the last enabled buffer is disabled
 or wiped. showcmd, statuslines, and other global UI settings are preserved.
 
-The percentage must be finite and in (0, 100]. Bounds must be positive integers
-with min_width <= max_width. scrolloff must be a nonnegative integer. Unknown
+Omit max_width for no maximum beyond the available space. Use
+require("zenon").enable({ max_width = false }) to remove a maximum inherited
+from setup or an earlier enable call.
+
+The percentage must be finite and in (0, 100]. min_width must be a positive
+integer. When set, max_width must be a positive integer at least min_width;
+false also means no maximum. scrolloff must be a nonnegative integer. Unknown
 options are rejected. window_options accepts only window-local Neovim options.
 setup replaces setup defaults; runtime buffer overrides still take priority.
 

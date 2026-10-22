@@ -8,7 +8,8 @@
 - Provide `Zenon`, `Zenoff`, `Zenon 50`, `Zenon 50 1000`, and
   `Zenon 50 1000 200`. `Zenon` enables or resizes; `Zenoff` disables.
 - Interpret width as a percentage of the current pane, with configurable minimum
-  and maximum text columns. Fit available space when it is below the minimum.
+  and optional maximum text columns. Default to no maximum. Fit available space
+  when it is below the minimum.
 - Make the wrapped continuation marker configurable as a string or disabled.
 - Make scrolling context and indented continuation rows configurable.
 - Provide comfortable wrapped-row navigation, word-boundary wrapping, a dim

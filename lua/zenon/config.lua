@@ -3,7 +3,7 @@ local M = {}
 ---@class zenon.Options
 ---@field width? number Percentage of the host split, in (0, 100].
 ---@field min_width? integer Minimum text columns, limited by available space.
----@field max_width? integer Maximum text columns.
+---@field max_width? integer|false Maximum text columns; nil or false means no maximum.
 ---@field showbreak? string|false Marker on wrapped continuation rows.
 ---@field scrolloff? integer Screen rows of scrolling context.
 ---@field breakindent? boolean Indent wrapped continuation rows.
@@ -18,7 +18,6 @@ local M = {}
 M.defaults = {
   width = 50,
   min_width = 80,
-  max_width = 160,
   showbreak = "↪",
   scrolloff = 10,
   breakindent = true,
@@ -56,15 +55,17 @@ end
 
 function M.validate(options)
   for key in pairs(options) do
-    check(M.defaults[key] ~= nil, "unknown option '" .. tostring(key) .. "'")
+    check(key == "max_width" or M.defaults[key] ~= nil, "unknown option '" .. tostring(key) .. "'")
   end
   check(
     finite(options.width) and options.width > 0 and options.width <= 100,
     "width must be a percentage in (0, 100]"
   )
   check(integer(options.min_width, 1), "min_width must be a positive integer")
-  check(integer(options.max_width, 1), "max_width must be a positive integer")
-  check(options.min_width <= options.max_width, "min_width must not exceed max_width")
+  if options.max_width ~= nil and options.max_width ~= false then
+    check(integer(options.max_width, 1), "max_width must be a positive integer, false, or nil")
+    check(options.min_width <= options.max_width, "min_width must not exceed max_width")
+  end
   check(integer(options.scrolloff, 0), "scrolloff must be a nonnegative integer")
   check(
     options.showbreak == false or type(options.showbreak) == "string",
@@ -126,7 +127,10 @@ end
 
 function M.columns(available, options)
   local desired = math.floor(available * options.width / 100)
-  return math.max(1, math.min(available, options.max_width, math.max(options.min_width, desired)))
+  return math.max(
+    1,
+    math.min(available, options.max_width or available, math.max(options.min_width, desired))
+  )
 end
 
 return M

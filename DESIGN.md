@@ -41,18 +41,22 @@ turning zenon off restores the original editing options in both windows.
 ## Width
 
 `width` is a percentage of the host region. `min_width` and `max_width` count text
-columns. Defaults are 50%, 80, and 160. Command arguments are percentage, maximum,
-minimum. `Zenon` enables or resizes and never toggles off.
+columns. Defaults are 50%, 80, and no maximum. An omitted or false `max_width`
+means no cap beyond available space. Explicit false overrides an inherited cap.
+Command arguments are percentage, maximum, minimum. `Zenon` enables or resizes
+and never toggles off.
 
 ```text
 available = host_window_columns + margin_columns + margin_separators
 text_space = available - retained_gutters
-target = min(text_space, max_width, max(min_width, floor(text_space * width / 100)))
+cap = max_width or text_space
+target = min(text_space, cap, max(min_width, floor(text_space * width / 100)))
 ```
 
-Bounds must be positive integers with minimum no greater than maximum. The
-percentage must be finite and in `(0, 100]`. Insufficient available space takes
-priority over the minimum. Invalid input is rejected before changing state.
+Numeric bounds must be positive integers with minimum no greater than maximum
+when a maximum is set. The percentage must be finite and in `(0, 100]`.
+Insufficient available space takes priority over the minimum. Invalid input is
+rejected before changing state.
 
 Resize events are coalesced through a scheduled reconciliation pass. Geometry
 is left alone when the desired margin sizes already match. This avoids loops

@@ -45,7 +45,7 @@ local function reset()
   vim.wo.scrolloff = -1
   vim.wo.showbreak = "original"
   vim.wo.fillchars = "eob:~"
-  zenon.setup({ min_width = 1, max_width = 1000 })
+  zenon.setup({ min_width = 1 })
   flush()
 end
 
@@ -111,6 +111,36 @@ test("width uses the current split and preserves its neighbor", function()
   zenon.disable()
   eq(available, api.nvim_win_get_width(host))
   eq(other_width, api.nvim_win_get_width(other))
+end)
+
+test("omitting the maximum allows wide text and a larger minimum", function()
+  local available = api.nvim_win_get_width(0)
+  zenon.setup({ width = 90 })
+  vim.cmd("Zenon")
+  eq(math.floor(available * 0.9), api.nvim_win_get_width(0))
+  zenon.disable()
+  zenon.setup({ width = 1, min_width = 200 })
+  zenon.enable()
+  eq(200, api.nvim_win_get_width(0))
+end)
+
+test("a configured or runtime maximum can be removed", function()
+  local available = api.nvim_win_get_width(0)
+  local uncapped = math.floor(available * 0.9)
+  zenon.setup({ width = 90, min_width = 1, max_width = 100 })
+  vim.cmd("Zenon 90")
+  eq(100, api.nvim_win_get_width(0))
+  zenon.enable({ max_width = false })
+  eq(uncapped, api.nvim_win_get_width(0))
+  zenon.disable()
+  zenon.enable()
+  eq(100, api.nvim_win_get_width(0))
+  zenon.setup({ width = 90, min_width = 1 })
+  eq(uncapped, api.nvim_win_get_width(0))
+  zenon.enable({ max_width = 120 })
+  eq(120, api.nvim_win_get_width(0))
+  zenon.enable({ max_width = false })
+  eq(uncapped, api.nvim_win_get_width(0))
 end)
 
 test("minimum, maximum, and small available space", function()
@@ -251,8 +281,11 @@ test("invalid input leaves state unchanged and failed initialization rolls back"
   for _, values in ipairs({
     { width = 0 },
     { width = 101 },
-    { min_width = 2000 },
+    { min_width = 0 },
+    { min_width = 2000, max_width = 1000 },
     { max_width = 0 },
+    { max_width = true },
+    { max_width = "100" },
     { scrolloff = -1 },
   }) do
     eq(false, pcall(zenon.enable, values))
