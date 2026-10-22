@@ -64,10 +64,11 @@ The default writing profile enables soft wrapping, word-boundary wrapping, and
 indented continuation rows. `showbreak` is a string or false; it is not a marker
 for actual newline characters. `scrolloff` controls scrolling context.
 
-Normal-mode `j` and `k` use screen rows without a count, and file lines with a
-count. Operator-pending and Visual-mode mappings stay unchanged. Existing
-buffer-local mappings take precedence. Newly installed mappings are removed
-only if they still point to zenon's callback.
+Normal-mode `j` and `k` use screen rows with or without a count. `5j` moves five
+visible rows down and `5k` moves five visible rows up. Operator-pending and
+Visual-mode mappings stay unchanged. Existing buffer-local mappings take
+precedence. Newly installed mappings are removed only if they still point to
+zenon's callback.
 
 Options use window scope, with their local inheritance values saved for
 restoration. Existing formatting, spell checking, and buffer contents are

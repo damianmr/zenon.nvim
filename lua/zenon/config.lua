@@ -9,7 +9,7 @@ local M = {}
 ---@field breakindent? boolean Indent wrapped continuation rows.
 ---@field wrap? boolean
 ---@field linebreak? boolean
----@field wrap_navigation? boolean Count-aware, normal-mode j/k mappings.
+---@field wrap_navigation? boolean Move normal-mode j/k by visible rows, including counts.
 ---@field hide_eob? boolean Hide end-of-buffer markers.
 ---@field dim? number|false Amount to darken the empty margins, from 0 to 1.
 ---@field ruler? boolean Global ruler value while any buffer is enabled.

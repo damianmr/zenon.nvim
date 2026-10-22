@@ -62,8 +62,8 @@ setup replaces setup defaults; runtime buffer overrides still take priority.
 
 NAVIGATION                                                   *zenon-navigation*
 
-Normal-mode j/k move by visible rows unless a count is provided. 5j moves through
-five file lines; 5gj moves through five visible rows. Operator-pending and Visual
+Normal-mode j/k move by visible rows, including with a count. 5j moves five
+visible rows down and 5k moves five visible rows up. Operator-pending and Visual
 mappings are preserved. Existing buffer-local mappings take precedence.
 
 0, ^ and $ keep their file-line meanings. Use |g0|, |g^| and |g$| for screen rows.

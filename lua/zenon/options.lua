@@ -93,7 +93,7 @@ function M.navigation(session)
   if session.options.wrap_navigation then
     for _, key in ipairs({ "j", "k" }) do
       M.map(session, key, function()
-        return vim.v.count == 0 and vim.wo.wrap and ("g" .. key) or key
+        return vim.wo.wrap and ("g" .. key) or key
       end, "move " .. (key == "j" and "down" or "up") .. " through wrapped rows", true)
     end
   end

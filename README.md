@@ -90,10 +90,10 @@ You can set `window_options.spell = true` to enable spell checking in zenon.
 ## Navigation and scope
 
 In enabled buffers, normal-mode `j` and `k` move through visible wrapped rows.
-Counted moves such as `5j` keep their normal file-line meaning. `5gj` moves five
-visible rows. Operator-pending motions, such as `dj`, and Visual-mode mappings
-are unchanged. Existing buffer-local mappings take priority. Set
-`wrap_navigation=false` to leave `j` and `k` entirely as configured.
+Counts use visible rows too: `5j` moves five rows down, and `5k` moves five rows
+up, including within a wrapped paragraph. Operator-pending motions, such as `dj`,
+and Visual-mode mappings are unchanged. Existing buffer-local mappings take
+priority. Set `wrap_navigation=false` to leave `j` and `k` entirely as configured.
 
 The text buffer remains in a native editing split. zenon adds unlisted scratch
 windows as left and right margins. Directional window navigation skips these

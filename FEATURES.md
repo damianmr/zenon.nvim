@@ -13,6 +13,8 @@
 - Make scrolling context and indented continuation rows configurable.
 - Provide comfortable wrapped-row navigation, word-boundary wrapping, a dim
   background around the text, hidden end-of-buffer markers, and a disabled ruler.
+- Normal-mode `j` and `k`, including counts such as `5j` and `5k`, move through
+  visible screen rows.
 - Preserve partial command display (`showcmd`) and ordinary statuslines.
 - Allow nvim-tree to open and close without disabling enabled buffers.
 - Keep tmux, terminal, GUI, and other plugin integrations out of the core. Provide
