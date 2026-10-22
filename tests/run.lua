@@ -59,6 +59,42 @@ local function real_windows()
   end, api.nvim_tabpage_list_wins(0))
 end
 
+local function with_lualine(callback)
+  local previous = package.loaded.lualine
+  local current = {
+    options = {
+      theme = "custom",
+      disabled_filetypes = { statusline = { "help" }, winbar = { "quickfix" } },
+    },
+    sections = { lualine_c = { "filename" } },
+  }
+  local calls = 0
+  local lualine = {
+    get_config = function()
+      return vim.deepcopy(current)
+    end,
+    setup = function(update)
+      calls = calls + 1
+      for group, values in pairs(update) do
+        for key, value in pairs(values) do
+          current[group][key] = vim.deepcopy(value)
+        end
+      end
+    end,
+  }
+  package.loaded.lualine = lualine
+  local ok, failure = xpcall(function()
+    callback(lualine, function()
+      return calls
+    end)
+  end, debug.traceback)
+  zenon.disable_all()
+  package.loaded.lualine = previous
+  if not ok then
+    error(failure, 0)
+  end
+end
+
 test("commands enable, resize, and explicitly disable", function()
   local win, buf = api.nvim_get_current_win(), api.nvim_get_current_buf()
   local original_width = api.nvim_win_get_width(win)
@@ -287,6 +323,9 @@ test("invalid input leaves state unchanged and failed initialization rolls back"
     { max_width = true },
     { max_width = "100" },
     { scrolloff = -1 },
+    { integrations = false },
+    { integrations = { lualine = "yes" } },
+    { integrations = { [1] = true } },
   }) do
     eq(false, pcall(zenon.enable, values))
     eq(false, zenon.is_enabled())
@@ -521,6 +560,320 @@ test("shrinking below the minimum removes margins but retains enabled state", fu
   eq(1, small.windows)
   eq(true, zenon.is_enabled())
   eq(120, api.nvim_win_get_width(0))
+end)
+
+test("custom integrations share one lifecycle and receive margin metadata", function()
+  local attached, detached, state = 0, 0, {}
+  ---@type zenon.IntegrationContext
+  local latest = { buffers = {}, windows = {}, margins = {} }
+  local unregister = zenon.register_integration("test-bars", {
+    attach = function(ctx)
+      attached = attached + 1
+      eq(1, #ctx.buffers)
+      ctx.buffers[1] = -1 -- Each callback receives its own snapshot.
+      return state
+    end,
+    update = function(ctx, saved)
+      eq(state, saved)
+      latest = ctx
+      for _, margin in ipairs(ctx.margins) do
+        eq(true, zenon.is_margin(margin.winid))
+        eq(true, vim.w[margin.winid].zenon_padding)
+        eq("zenon-margin", vim.bo[margin.bufnr].filetype)
+        eq("nofile", vim.bo[margin.bufnr].buftype)
+        eq(false, vim.bo[margin.bufnr].buflisted)
+        eq(false, vim.bo[margin.bufnr].modifiable)
+        assert(api.nvim_win_is_valid(margin.owner))
+        assert(margin.side == "left" or margin.side == "right")
+      end
+    end,
+    detach = function(ctx, saved)
+      eq(state, saved)
+      detached = detached + 1
+      eq({}, ctx.buffers)
+      eq({}, ctx.margins)
+    end,
+  })
+  zenon.setup({ min_width = 1, integrations = { ["test-bars"] = true } })
+  local first = api.nvim_get_current_buf()
+  zenon.enable()
+  eq(false, zenon.is_margin())
+  eq(false, zenon.is_margin(-1))
+  eq({ first }, latest.buffers)
+  eq(1, #latest.windows)
+  eq(2, #latest.margins)
+  vim.cmd("belowright new")
+  local second = api.nvim_get_current_buf()
+  zenon.enable()
+  eq(1, attached)
+  eq(2, #latest.buffers)
+  eq(4, #latest.margins)
+  zenon.disable(first)
+  eq(0, detached)
+  zenon.disable(second)
+  eq(1, detached)
+  unregister()
+  unregister()
+  eq(1, detached)
+end)
+
+test("integrations can register late and unregister while buffers stay enabled", function()
+  local ready, attached, detached = false, 0, 0
+  zenon.setup({ min_width = 1, integrations = { ["test-late"] = true } })
+  zenon.enable()
+  local unregister = zenon.register_integration("test-late", {
+    available = function()
+      return ready
+    end,
+    attach = function()
+      attached = attached + 1
+    end,
+    detach = function(ctx)
+      eq(1, #ctx.buffers)
+      detached = detached + 1
+    end,
+  })
+  flush()
+  eq(0, attached)
+  ready = true
+  api.nvim_exec_autocmds("WinEnter", {})
+  flush()
+  eq(1, attached)
+  unregister()
+  unregister()
+  eq(1, detached)
+  eq(true, zenon.is_enabled())
+  api.nvim_exec_autocmds("WinEnter", {})
+  flush()
+  eq(1, attached)
+  eq(false, pcall(zenon.register_integration, "invalid", {}))
+  eq(false, pcall(zenon.register_integration, "lualine", { attach = function() end }))
+end)
+
+test("integration failures clean up once without breaking editing", function()
+  local notifications, detached, updates, healthy_updates, healthy_detached = {}, 0, 0, 0, 0
+  local previous_notify = vim.notify
+  rawset(vim, "notify", function(message)
+    notifications[#notifications + 1] = message
+  end)
+  local unregister = zenon.register_integration("test-failing", {
+    attach = function()
+      return "saved"
+    end,
+    update = function()
+      updates = updates + 1
+      error("update failed")
+    end,
+    detach = function(_, saved)
+      eq("saved", saved)
+      detached = detached + 1
+      error("cleanup failed")
+    end,
+  })
+  local unregister_healthy = zenon.register_integration("test-healthy", {
+    attach = function() end,
+    update = function()
+      healthy_updates = healthy_updates + 1
+    end,
+    detach = function()
+      healthy_detached = healthy_detached + 1
+    end,
+  })
+  local ok, failure = xpcall(function()
+    zenon.setup({
+      min_width = 1,
+      integrations = { ["test-failing"] = true, ["test-healthy"] = true },
+    })
+    zenon.enable()
+    api.nvim_exec_autocmds("WinEnter", {})
+    flush()
+    eq(1, updates)
+    eq(1, detached)
+    eq(2, #notifications)
+    assert(healthy_updates > 0)
+    eq(true, zenon.is_enabled())
+    eq(3, #api.nvim_list_wins())
+    zenon.disable()
+    eq(1, #api.nvim_list_wins())
+    eq(true, vim.o.ruler)
+    eq(1, healthy_detached)
+  end, debug.traceback)
+  unregister()
+  unregister_healthy()
+  rawset(vim, "notify", previous_notify)
+  if not ok then
+    error(failure, 0)
+  end
+end)
+
+test("unavailable and failed adapters do not retry errors on every window event", function()
+  local notifications, checks, attaches = {}, 0, 0
+  local previous_notify = vim.notify
+  rawset(vim, "notify", function(message)
+    notifications[#notifications + 1] = message
+  end)
+  local unregister_check = zenon.register_integration("test-check-error", {
+    available = function()
+      checks = checks + 1
+      error("availability failed")
+    end,
+    attach = function()
+      error("must not be reached")
+    end,
+  })
+  local unregister_attach = zenon.register_integration("test-attach-error", {
+    attach = function()
+      attaches = attaches + 1
+      error("attach failed")
+    end,
+  })
+  local ok, failure = xpcall(function()
+    zenon.setup({
+      min_width = 1,
+      integrations = { ["test-check-error"] = true, ["test-attach-error"] = true },
+    })
+    zenon.enable()
+    api.nvim_exec_autocmds("WinEnter", {})
+    flush()
+    eq(1, checks)
+    eq(1, attaches)
+    eq(2, #notifications)
+    eq(true, zenon.is_enabled())
+    zenon.disable()
+    zenon.enable()
+    eq(2, checks)
+    eq(2, attaches)
+  end, debug.traceback)
+  zenon.disable_all()
+  unregister_check()
+  unregister_attach()
+  rawset(vim, "notify", previous_notify)
+  if not ok then
+    error(failure, 0)
+  end
+end)
+
+test("lualine exclusions preserve configuration and last until the final buffer", function()
+  with_lualine(function(lualine, calls)
+    local before = lualine.get_config()
+    local first = api.nvim_get_current_buf()
+    zenon.enable()
+    local enabled = lualine.get_config()
+    eq({ "help", "zenon-margin" }, enabled.options.disabled_filetypes.statusline)
+    eq({ "quickfix", "zenon-margin" }, enabled.options.disabled_filetypes.winbar)
+    eq(before.sections, enabled.sections)
+    eq(before.options.theme, enabled.options.theme)
+    zenon.enable({ width = 60 })
+    eq(1, calls())
+    vim.cmd("belowright new")
+    local second = api.nvim_get_current_buf()
+    zenon.enable()
+    zenon.disable(first)
+    eq(enabled, lualine.get_config())
+    zenon.disable(second)
+    eq(before, lualine.get_config())
+    eq(2, calls())
+  end)
+end)
+
+test("lualine preserves existing exclusions and later user changes", function()
+  with_lualine(function(lualine)
+    local before = lualine.get_config()
+    before.options.disabled_filetypes.winbar = { "zenon-margin", "help" }
+    lualine.setup(before)
+    zenon.enable()
+    local changed = lualine.get_config()
+    changed.options.theme = "later-theme"
+    changed.options.disabled_filetypes.statusline = { "custom", "zenon-margin" }
+    lualine.setup(changed)
+    zenon.disable()
+    eq(changed, lualine.get_config())
+  end)
+end)
+
+test("lualine reconfiguration restores its new baseline after disable", function()
+  with_lualine(function(lualine)
+    zenon.enable()
+    local changed = lualine.get_config()
+    changed.options.disabled_filetypes = { statusline = { "new" }, winbar = {} }
+    lualine.setup(changed)
+    api.nvim_exec_autocmds("WinEnter", {})
+    flush()
+    eq({ "new", "zenon-margin" }, lualine.get_config().options.disabled_filetypes.statusline)
+    zenon.disable()
+    eq(changed, lualine.get_config())
+  end)
+end)
+
+test("lualine stays unloaded and can attach later without leaving margin bars", function()
+  with_lualine(function(lualine)
+    local previous_preload = package.preload.lualine
+    local loads = 0
+    package.loaded.lualine = nil
+    package.preload.lualine = function()
+      loads = loads + 1
+      return lualine
+    end
+    local ok, failure = xpcall(function()
+      local host = api.nvim_get_current_win()
+      vim.wo[host].winbar = "file title"
+      zenon.enable()
+      eq(0, loads)
+      eq(nil, package.loaded.lualine)
+      for _, win in ipairs(api.nvim_list_wins()) do
+        if zenon.is_margin(win) then
+          vim.wo[win].winbar = "[No Name] [-]"
+        end
+      end
+      package.loaded.lualine = lualine
+      api.nvim_exec_autocmds("WinEnter", {})
+      flush()
+      eq(0, loads)
+      eq("file title", vim.wo[host].winbar)
+      for _, win in ipairs(api.nvim_list_wins()) do
+        if zenon.is_margin(win) then
+          eq("", vim.wo[win].winbar)
+          eq(" ", vim.wo[win].statusline)
+        end
+      end
+    end, debug.traceback)
+    package.preload.lualine = previous_preload
+    if not ok then
+      error(failure, 0)
+    end
+  end)
+end)
+
+test("lualine integration can be disabled without loading or changing it", function()
+  with_lualine(function(lualine, calls)
+    local before = lualine.get_config()
+    zenon.setup({ min_width = 1, integrations = { lualine = false } })
+    zenon.enable()
+    eq(0, calls())
+    eq(before, lualine.get_config())
+    zenon.setup({ min_width = 1 })
+    eq(1, calls())
+    zenon.setup({ min_width = 1, integrations = { lualine = false } })
+    eq(before, lualine.get_config())
+    eq(true, zenon.is_enabled())
+  end)
+end)
+
+test("failed enable restores attached integrations", function()
+  with_lualine(function(lualine)
+    local before = lualine.get_config()
+    zenon.setup({
+      hooks = {
+        on_enable = function()
+          error("initialization failed")
+        end,
+      },
+    })
+    eq(false, pcall(zenon.enable))
+    eq(false, zenon.is_enabled())
+    eq(1, #api.nvim_list_wins())
+    eq(before, lualine.get_config())
+  end)
 end)
 
 for _, entry in ipairs(tests) do

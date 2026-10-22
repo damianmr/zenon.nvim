@@ -21,7 +21,13 @@ repository is `damianmr/zenon.nvim`; the Lua module and user-facing name are `ze
   zen-mode only as a reference for behavior and editor option choices. Do not
   copy, translate, or mechanically adapt its implementation.
 - Keep the core independent of tmux, terminal emulators, GUIs, and other plugins.
-  Expose Lua lifecycle hooks for user-defined integrations.
+  Put optional adapters behind the integration registry in
+  `lua/zenon/integrations/`; use public plugin APIs and do not force-load plugins.
+  Expose Lua lifecycle hooks for user-defined behavior.
+- Preserve the documented margin contract: `filetype=zenon-margin`,
+  `w:zenon_padding`, `is_margin()`, and integration context metadata. Document
+  contract changes in the help file and test custom integration lifecycle,
+  state restoration, and optional-plugin availability.
 - Preserve normal use of other splits, sidebars, and floating tools.
 - Leaving a window or losing application focus must not disable zen mode.
 - Support configuration and runtime width changes with a percentage, maximum,

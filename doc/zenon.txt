@@ -42,6 +42,7 @@ Setup is optional. Defaults: >lua
         cursorline = false,
         cursorcolumn = false,
       },
+      integrations = { lualine = true },
       hooks = {},
     })
 <
@@ -91,10 +92,11 @@ Third-party window pickers and :windo can see them; exclude those windows when
 appropriate. Tight widths may use one margin, and a one-column gap may make the
 text one column narrower than requested. Native window minimums also apply.
 
-Window-title plugins also see the margins. With lualine, add "zenon-margin" to
-options.disabled_filetypes.winbar in its setup to prevent [No Name] [-] titles.
-If using a separate lualine statusline per window, add the same filetype to
-options.disabled_filetypes.statusline. Keep existing exclusions in both lists.
+The optional lualine adapter excludes margins from its winbars and per-window
+statuslines automatically, preventing [No Name] [-] titles. It uses an already
+loaded lualine instance and preserves file titles and the global statusline.
+It restores only exclusions still owned by zenon, preserving existing entries
+and later user changes. Set integrations.lualine=false to manage this yourself.
 
 Changed options and installed mappings are restored only if they still match
 zenon's value, preserving later user changes. Global personal mappings remain in
@@ -113,6 +115,8 @@ require("zenon").is_enabled(bufnr?)
 require("zenon").status(bufnr?)
     Return { enabled, bufnr, reason, session_count, windows }.
     Each window entry has winid, width, available.
+require("zenon").is_margin(winid?)
+    Whether a valid window is currently a margin. Defaults to the current window.
 
 hooks.on_enable(ctx)
     Runs once per buffer session, after views are created. May return a cleanup
@@ -128,6 +132,75 @@ state. Hooks may inspect state but must not call lifecycle functions recursively
 
 Twilight is a separate plugin that dims inactive text regions. It is not loaded
 by zenon. Configure external integrations through hooks.
+
+INTEGRATIONS                                               *zenon-integrations*
+
+require("zenon").register_integration(name, spec)
+    Register an adapter. Names must be unique nonempty strings. Returns an
+    idempotent unregister() function that detaches and removes the adapter.
+    Enable it with setup({ integrations = { [name] = true } }). Registration
+    and configuration may occur in either order. Late registrations apply to
+    existing enabled buffers on the next scheduled reconciliation.
+
+An integration has these callbacks:
+
+available() -> boolean
+    Optional. Check whether the other plugin is already available, for example
+    through package.loaded. Omit this callback for an always-available adapter.
+    Availability is checked on enable and coalesced window lifecycle events.
+    zenon does not load the other plugin or poll for it.
+attach(ctx) -> state
+    Required. Called once when at least one enabled buffer requests the adapter
+    and it is available. Runs before new margins are created, so ctx.windows
+    and ctx.margins may be empty. Prepare the integration and return any state
+    needed by update and detach. If attach raises an error after changing
+    external state, it must roll back those partial changes itself.
+update(ctx, state)
+    Optional. Called after layout reconciliation. Receives current windows and
+    margins, including new and resized views, with the state returned by attach.
+detach(ctx, state)
+    Optional. Restore owned state when no enabled buffer requests the adapter,
+    it becomes unavailable, or unregister() is called. Margins may already have
+    been destroyed. Preserve any later user changes to the other plugin.
+
+Context is a fresh snapshot for each callback:
+    buffers: enabled buffer IDs, including hidden buffers.
+    windows: { winid, bufnr, width, available } for visible editing views.
+    margins: { winid, bufnr, owner, side } for margin windows. owner is the
+             editing window ID; side is "left" or "right".
+Lists span all tabs and are sorted by buffer or window ID. Integration state is
+shared across buffers; any enabled buffer requesting an adapter keeps it active.
+Use per-buffer hooks for behavior that should run separately for each buffer.
+
+Callbacks must not call zenon lifecycle or registration functions recursively.
+Errors are reported without breaking editor cleanup or other integrations.
+An update error detaches that adapter. After an availability, attach, or update
+error, the adapter is not retried until it is disabled and enabled again. A
+detach error is reported once and does not block cleanup of other resources.
+
+The built-in lualine adapter lives in lua/zenon/integrations/lualine.lua and uses
+this same API. The layout and session code contain no lualine-specific behavior.
+It temporarily adds zenon-margin to lualine's disabled_filetypes.statusline and
+disabled_filetypes.winbar through its public get_config and setup functions.
+
+MARGIN CONTRACT                                                *zenon-margins*
+
+The following identifiers are available to external integrations:
+    require("zenon").is_margin(winid?)
+    w:zenon_padding=v:true on margin windows
+    filetype=zenon-margin on margin scratch buffers
+    buftype=nofile, buflisted=false, modifiable=false, swapfile=false
+
+Margins are ordinary split windows, visible to :windo, window pickers and window
+counts. Use the identifiers above to filter them. Two margins of one editing
+view may share a scratch buffer; buffer IDs do not identify individual windows.
+
+Window and buffer IDs are temporary and may change during resize, buffer
+replacement, or layout repair. Use the current context and check validity before
+asynchronous work. Do not edit margin buffers or move, close, or repurpose their
+windows. The filetype is assigned before margin windows exist, and native window
+creation autocommands are suppressed. Use update(ctx, state) for window changes.
+Implementation tables and highlight group names are private.
 
 DIAGNOSTICS                                                      *zenon-health*
 

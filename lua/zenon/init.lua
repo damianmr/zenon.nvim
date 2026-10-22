@@ -1,6 +1,7 @@
 local config = require("zenon.config")
 local layout = require("zenon.layout")
 local options = require("zenon.options")
+local integrations = require("zenon.integrations")
 local M = {}
 local settings = vim.deepcopy(config.defaults)
 local buffers, views, baselines = {}, {}, {}
@@ -16,15 +17,53 @@ local function count()
   return vim.tbl_count(buffers)
 end
 
+local function integration_context()
+  local ctx = { buffers = {}, windows = {}, margins = {} }
+  for buf in pairs(buffers) do
+    ctx.buffers[#ctx.buffers + 1] = buf
+  end
+  for win, view in pairs(views) do
+    if vim.api.nvim_win_is_valid(win) then
+      ctx.windows[#ctx.windows + 1] = {
+        winid = win,
+        bufnr = view.buf,
+        width = view.width,
+        available = view.available,
+      }
+    end
+  end
+  for win, margin in pairs(layout.padding) do
+    if vim.api.nvim_win_is_valid(win) then
+      ctx.margins[#ctx.margins + 1] = {
+        winid = win,
+        bufnr = vim.api.nvim_win_get_buf(win),
+        owner = margin.owner,
+        side = margin.side,
+      }
+    end
+  end
+  table.sort(ctx.buffers)
+  for _, key in ipairs({ "windows", "margins" }) do
+    table.sort(ctx[key], function(a, b)
+      return a.winid < b.winid
+    end)
+  end
+  return ctx
+end
+
 local function notify(message)
   vim.notify("zenon: " .. tostring(message), vim.log.levels.ERROR)
 end
 
 local function global_options()
+  local requested = {}
   if next(buffers) then
     local value = true
     for _, session in pairs(buffers) do
       value = value and session.options.ruler
+      for name, enabled in pairs(session.options.integrations) do
+        requested[name] = requested[name] or enabled
+      end
     end
     if not ruler then
       ruler = { saved = vim.o.ruler, applied = value }
@@ -39,6 +78,7 @@ local function global_options()
     end
     ruler = nil
   end
+  integrations.reconcile(requested, integration_context())
 end
 
 local function context(buf, reason)
@@ -167,6 +207,7 @@ synchronize = function()
       remove_buffer(buf, "wipe")
     end
   end
+  global_options()
   for win, view in pairs(vim.tbl_extend("force", {}, views)) do
     if
       not vim.api.nvim_win_is_valid(win)
@@ -208,6 +249,7 @@ synchronize = function()
       end
     end
   end
+  integrations.update(integration_context())
 end
 
 local function install_maps(session)
@@ -329,6 +371,29 @@ end
 ---@param buf? integer
 function M.is_enabled(buf)
   return buffers[buffer_number(buf)] ~= nil
+end
+
+---@param win? integer Defaults to the current window.
+function M.is_margin(win)
+  if win == nil or win == 0 then
+    win = vim.api.nvim_get_current_win()
+  end
+  return vim.api.nvim_win_is_valid(win) and layout.padding[win] ~= nil
+end
+
+---@param name string
+---@param spec zenon.Integration
+---@return function unregister
+function M.register_integration(name, spec)
+  local unregister = locked(function()
+    return integrations.register(name, spec)
+  end)
+  schedule()
+  return function()
+    locked(function()
+      unregister(integration_context())
+    end)
+  end
 end
 
 ---@param buf? integer

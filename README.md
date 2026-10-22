@@ -81,6 +81,7 @@ require("zenon").setup({
     cursorline = false,
     cursorcolumn = false,
   },
+  integrations = { lualine = true },
   hooks = {},
 })
 ```
@@ -117,23 +118,11 @@ pickers can see them. Window pickers should exclude `buftype=nofile` or
 `filetype=zenon-margin`. Very small margins may use one side only; with just one
 spare column the text can be one column narrower than requested.
 
-Plugins that draw window titles also see these margins. With lualine, add
-`"zenon-margin"` to `options.disabled_filetypes.winbar` in your existing setup:
-
-```lua
-require("lualine").setup({
-  options = {
-    disabled_filetypes = {
-      winbar = { "zenon-margin" },
-    },
-  },
-  -- Keep your other settings and existing exclusions.
-})
-```
-
-This prevents `[No Name] [-]` titles in the margins. If lualine draws a separate
-statusline in each window, also exclude `"zenon-margin"` from
-`options.disabled_filetypes.statusline`.
+The built-in lualine adapter automatically excludes margins from its winbars
+and per-window statuslines when lualine is already loaded. File titles and the
+global statusline remain available. It restores exclusions it still owns when
+the integration stops, preserving existing exclusions and later user changes.
+Set `integrations = { lualine = false }` to manage this yourself.
 
 One enabled buffer can appear in multiple windows. Each view gets its own width
 and saved window options. Changing to an unrelated buffer restores the old view;
@@ -192,6 +181,62 @@ call lifecycle functions recursively. External integrations should use
 
 Twilight is an optional separate plugin that dims inactive regions of text.
 zenon does not enable it. Use hooks for Twilight or environment-specific behavior.
+
+## Integrations
+
+Optional adapters use a shared registry; [lualine](lua/zenon/integrations/lualine.lua)
+is the first built-in adapter.
+Register your own adapter, then enable it through the options:
+
+```lua
+local zenon = require("zenon")
+local unregister = zenon.register_integration("my-bars", {
+  available = function()
+    return package.loaded["my-bars"] ~= nil
+  end,
+  attach = function(ctx)
+    -- Prepare the plugin and return any state needed for updates or cleanup.
+    -- Margins may not exist yet at this point.
+    return {}
+  end,
+  update = function(ctx, state)
+    for _, margin in ipairs(ctx.margins) do
+      -- Configure this margin through your plugin's public API.
+      -- margin: winid, bufnr, owner (editing window ID), side (left or right).
+    end
+  end,
+  detach = function(ctx, state)
+    -- Restore only state still owned by this integration.
+  end,
+})
+zenon.setup({ integrations = { ["my-bars"] = true } })
+-- unregister() removes the adapter and runs its cleanup, if attached.
+```
+
+An adapter attaches once when requested by an enabled buffer and available.
+`update` runs after layout reconciliation; `detach` runs when no enabled buffer
+requests it, it becomes unavailable, or it is unregistered. Context contains
+enabled `buffers`, editing `windows`, and `margins` across all tabs. Integrations
+are shared across buffers. A missing `available` callback means always available.
+zenon checks availability on enable and coalesced window events, without loading
+another plugin or polling. Callback errors are reported and isolated; a failed
+adapter is retried after being disabled and enabled again.
+
+The margin identifiers are part of the integration contract:
+
+| Identifier | Meaning |
+| --- | --- |
+| `require("zenon").is_margin(winid)` | Whether a window is a current zenon margin; defaults to the current window. |
+| `vim.w[winid].zenon_padding == true` | Window marker for tools that do not require zenon. |
+| `filetype=zenon-margin` | Identifies the scratch buffer, for plugin exclusion lists. |
+| `buftype=nofile`, unlisted, nonmodifiable | The margin is display space and contains no user file. |
+
+The two margins of a view can share one scratch buffer. Margins are temporary;
+use current context IDs and check validity before asynchronous work. Do not
+edit their buffers or move, close, or repurpose their windows. `update` supplies
+window creation information even though zenon suppresses native creation
+autocommands. See `:help zenon-integrations` and `:help zenon-margins` for the
+full callback and context contract.
 
 ## Development
 

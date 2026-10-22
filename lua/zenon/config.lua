@@ -14,6 +14,7 @@ local M = {}
 ---@field dim? number|false Amount to darken the empty margins, from 0 to 1.
 ---@field ruler? boolean Global ruler value while any buffer is enabled.
 ---@field window_options? table<string, boolean|number|string>
+---@field integrations? table<string, boolean> Enabled registered integrations.
 ---@field hooks? table<string, function>
 M.defaults = {
   width = 50,
@@ -36,6 +37,7 @@ M.defaults = {
     cursorline = false,
     cursorcolumn = false,
   },
+  integrations = { lualine = true },
   hooks = {},
 }
 
@@ -96,6 +98,11 @@ function M.validate(options)
       "window_options.'" .. tostring(key) .. "' must be a window-local option"
     )
     check(type(value) == info.type, "invalid value type for window_options.'" .. key .. "'")
+  end
+  check(type(options.integrations) == "table", "integrations must be a table")
+  for key, value in pairs(options.integrations) do
+    check(type(key) == "string" and key ~= "", "integration names must be nonempty strings")
+    check(type(value) == "boolean", "integrations.'" .. key .. "' must be a boolean")
   end
   check(type(options.hooks) == "table", "hooks must be a table")
   for key, value in pairs(options.hooks) do

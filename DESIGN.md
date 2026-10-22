@@ -95,6 +95,20 @@ Failed initialization restores options and removes owned windows. A failed
 reconfiguration restores the previous session. Cleanup errors are reported and
 must not prevent other resources from being cleaned up.
 
+## Optional integrations
+
+The session and layout code use a shared adapter registry. Each integration
+can check availability, attach once, update after layout reconciliation, and
+detach with its saved state. An adapter stays active while any enabled buffer
+requests it, including across hidden buffers and multiple tabs. Failures are
+isolated from editing and other adapters. No external plugin is force-loaded.
+
+The first adapter is lualine. It adds the margin filetype to lualine's public
+exclusion settings and restores only lists that still match its applied values.
+It keeps existing entries and later user changes. Plugin-specific behavior lives
+in lua/zenon/integrations/, with the public callback and margin contracts
+documented in :help zenon-integrations and :help zenon-margins.
+
 ## Verification
 
 `make test` exercises the public commands, real native windows, buffer lifecycles,
