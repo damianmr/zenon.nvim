@@ -170,6 +170,13 @@ zenon does not enable it. Use hooks for Twilight or environment-specific behavio
 
 ## Development
 
+Local checks need Neovim 0.12+ (`nvim`) and StyLua (`stylua`) in your `PATH`.
+On macOS, install them with Homebrew:
+
+```sh
+brew install neovim stylua
+```
+
 Run `make test` for isolated headless Neovim integration tests, `make check` for
 StyLua checks, and `:checkhealth zenon` inside Neovim for basic diagnostics.
 StyLua 2.6.0 is used in CI. See [DESIGN.md](DESIGN.md) for layout decisions and
