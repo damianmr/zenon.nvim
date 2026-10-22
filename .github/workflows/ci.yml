@@ -13,7 +13,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        # Avoid the macOS ARM runner capacity shortage affecting macos-latest.
+        os: [ubuntu-latest, macos-15-intel]
         neovim: [v0.12.2, stable]
     runs-on: ${{ matrix.os }}
     steps:
