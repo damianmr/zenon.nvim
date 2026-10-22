@@ -125,7 +125,9 @@ the integration stops, preserving existing exclusions and later user changes.
 Set `integrations = { lualine = false }` to manage this yourself.
 
 One enabled buffer can appear in multiple windows. Each view gets its own width
-and saved window options. Changing to an unrelated buffer restores the old view;
+and saved window options. Splitting a view shares its whole pane, including the
+margin space; disabling leaves the resulting native splits in place.
+Changing to an unrelated buffer restores the old view;
 returning to the enabled buffer recreates it. Leaving a split, changing tabs,
 or losing application focus does not disable the buffer.
 

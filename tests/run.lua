@@ -35,6 +35,8 @@ local function reset()
   vim.cmd("silent! only!")
   api.nvim_win_set_buf(0, editing_buffer())
   vim.o.equalalways = false
+  vim.o.splitright = false
+  vim.o.splitbelow = false
   vim.o.ruler = true
   vim.o.showcmd = true
   vim.wo.wrap = false
@@ -236,6 +238,195 @@ test("one enabled buffer can have two independent views", function()
     eq(true, vim.wo[win].number, "new splits must restore inherited options")
     eq(false, vim.wo[win].wrap)
   end
+end)
+
+for _, splitright in ipairs({ false, true }) do
+  for _, equalalways in ipairs({ false, true }) do
+    test(
+      ("vertical splits share the whole host (right=%s, equal=%s)"):format(splitright, equalalways),
+      function()
+        vim.o.splitright, vim.o.equalalways = splitright, equalalways
+        zenon.setup({})
+        local source = api.nvim_get_current_win()
+        zenon.enable()
+        vim.cmd("normal! " .. api.nvim_replace_termcodes("<C-w>v", true, false, true))
+        local other = api.nvim_get_current_win()
+        flush()
+        eq(other, api.nvim_get_current_win())
+        eq(2, #zenon.status().windows)
+        local layout = require("zenon.layout")
+        for _, view in ipairs(zenon.status().windows) do
+          eq(view.winid == source and 119 or 120, view.available)
+          eq(80, view.width)
+          local sides = {}
+          for win, margin in pairs(layout.padding) do
+            if margin.owner == view.winid then
+              sides[margin.side] = win
+            end
+          end
+          assert(sides.left and sides.right, "both views need left and right margins")
+          local position = api.nvim_win_get_position(view.winid)
+          eq(
+            position[2],
+            api.nvim_win_get_position(sides.left)[2] + api.nvim_win_get_width(sides.left) + 1
+          )
+          eq(position[2] + 81, api.nvim_win_get_position(sides.right)[2])
+        end
+        vim.cmd("Zenoff")
+        eq(2, #api.nvim_list_wins())
+        eq(119, api.nvim_win_get_width(source))
+        eq(120, api.nvim_win_get_width(other))
+        for _, win in ipairs({ source, other }) do
+          eq(true, vim.wo[win].number)
+          eq(false, vim.wo[win].wrap)
+          eq(false, vim.wo[win].winfixwidth)
+        end
+        eq(equalalways, vim.o.equalalways)
+      end
+    )
+  end
+end
+
+test("disable immediately after a split restores geometry and inherited options", function()
+  vim.o.splitright = true
+  zenon.setup({})
+  local source = api.nvim_get_current_win()
+  zenon.enable()
+  vim.cmd("vsplit")
+  local other = api.nvim_get_current_win()
+  vim.cmd("Zenoff")
+  eq(2, #api.nvim_list_wins())
+  eq(119, api.nvim_win_get_width(source))
+  eq(120, api.nvim_win_get_width(other))
+  eq(false, vim.wo[other].wrap)
+  eq(true, vim.wo[other].number)
+end)
+
+test("multiple splits before reconciliation share margins at each split", function()
+  vim.o.splitright = true
+  local source = api.nvim_get_current_win()
+  zenon.enable()
+  vim.cmd("vsplit")
+  local second = api.nvim_get_current_win()
+  vim.cmd("vsplit")
+  local third = api.nvim_get_current_win()
+  flush()
+  local available = {}
+  for _, view in ipairs(zenon.status().windows) do
+    available[view.winid] = view.available
+  end
+  eq({ [source] = 119, [second] = 59, [third] = 60 }, available)
+  zenon.disable()
+  for win, width in pairs(available) do
+    eq(width, api.nvim_win_get_width(win))
+    eq(false, vim.wo[win].wrap)
+    eq(true, vim.wo[win].number)
+  end
+end)
+
+test("horizontal splits retain full host width and their native heights", function()
+  vim.o.splitbelow, vim.o.equalalways = true, true
+  local source = api.nvim_get_current_win()
+  zenon.enable()
+  vim.cmd("split")
+  local other = api.nvim_get_current_win()
+  local heights =
+    { [source] = api.nvim_win_get_height(source), [other] = api.nvim_win_get_height(other) }
+  flush()
+  eq(2, #zenon.status().windows)
+  for _, view in ipairs(zenon.status().windows) do
+    eq(240, view.available)
+    eq(120, view.width)
+    eq(heights[view.winid], api.nvim_win_get_height(view.winid))
+  end
+  zenon.disable()
+  for win, height in pairs(heights) do
+    eq(240, api.nvim_win_get_width(win))
+    eq(height, api.nvim_win_get_height(win))
+  end
+end)
+
+test("mixed splits before reconciliation keep their separate host regions", function()
+  vim.o.splitright, vim.o.splitbelow = true, true
+  local top = api.nvim_get_current_win()
+  zenon.enable()
+  vim.cmd("split")
+  local bottom_left = api.nvim_get_current_win()
+  vim.cmd("vsplit")
+  local bottom_right = api.nvim_get_current_win()
+  flush()
+  local available = {}
+  for _, view in ipairs(zenon.status().windows) do
+    available[view.winid] = view.available
+  end
+  eq({ [top] = 240, [bottom_left] = 119, [bottom_right] = 120 }, available)
+  zenon.disable()
+  for win, width in pairs(available) do
+    eq(width, api.nvim_win_get_width(win))
+  end
+end)
+
+test("splitting again preserves the neighboring zen view", function()
+  vim.o.splitright = true
+  local neighbor = api.nvim_get_current_win()
+  zenon.enable()
+  vim.cmd("vsplit")
+  flush()
+  vim.cmd("vsplit")
+  flush()
+  local available = {}
+  for _, view in ipairs(zenon.status().windows) do
+    available[#available + 1] = view.available
+    if view.winid == neighbor then
+      eq(119, view.available)
+    end
+  end
+  table.sort(available)
+  eq({ 59, 60, 119 }, available)
+  zenon.disable()
+  eq(119, api.nvim_win_get_width(neighbor))
+end)
+
+test("splitting a zen view preserves an existing sidebar", function()
+  vim.o.splitright = true
+  local source = api.nvim_get_current_win()
+  vim.cmd("topleft vnew")
+  local sidebar = api.nvim_get_current_win()
+  vim.bo.buftype = "nofile"
+  api.nvim_win_set_width(sidebar, 30)
+  vim.wo.winfixwidth = true
+  api.nvim_set_current_win(source)
+  zenon.enable()
+  vim.cmd("vsplit")
+  local other = api.nvim_get_current_win()
+  flush()
+  eq(30, api.nvim_win_get_width(sidebar))
+  local widths = {}
+  for _, view in ipairs(zenon.status().windows) do
+    widths[#widths + 1] = view.available
+  end
+  table.sort(widths)
+  eq({ 104, 104 }, widths)
+  zenon.disable()
+  eq(104, api.nvim_win_get_width(source))
+  eq(104, api.nvim_win_get_width(other))
+  eq(30, api.nvim_win_get_width(sidebar))
+  eq(true, vim.wo[sidebar].winfixwidth)
+  vim.wo[sidebar].winfixwidth = false
+end)
+
+test("a new sidebar keeps the size assigned after WinNew", function()
+  local source = api.nvim_get_current_win()
+  zenon.enable()
+  vim.cmd("vnew")
+  local sidebar = api.nvim_get_current_win()
+  vim.bo.buftype = "nofile"
+  api.nvim_win_set_width(sidebar, 30)
+  flush()
+  eq(30, api.nvim_win_get_width(sidebar))
+  zenon.disable(api.nvim_win_get_buf(source))
+  eq(30, api.nvim_win_get_width(sidebar))
+  eq(false, vim.wo[sidebar].wrap)
 end)
 
 test("a sidebar stays usable while zen resizes", function()

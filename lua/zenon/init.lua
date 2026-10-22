@@ -1,5 +1,6 @@
 local config = require("zenon.config")
 local layout = require("zenon.layout")
+local splits = require("zenon.splits")
 local options = require("zenon.options")
 local integrations = require("zenon.integrations")
 local M = {}
@@ -179,11 +180,21 @@ local function remove_view(win)
   layout.destroy(view)
 end
 
+local function repair_splits()
+  for _, group in ipairs(splits.take()) do
+    if views[group.view.win] == group.view then
+      remove_view(group.view.win)
+      layout.redistribute(group.targets)
+    end
+  end
+end
+
 local function remove_buffer(buf, reason)
   local session = buffers[buf]
   if not session then
     return
   end
+  repair_splits()
   for win, view in pairs(vim.tbl_extend("force", {}, views)) do
     if view.buf == buf then
       remove_view(win)
@@ -202,6 +213,7 @@ local function remove_buffer(buf, reason)
 end
 
 synchronize = function()
+  repair_splits()
   for buf in pairs(vim.tbl_extend("force", {}, buffers)) do
     if not vim.api.nvim_buf_is_valid(buf) then
       remove_buffer(buf, "wipe")
@@ -262,6 +274,7 @@ end
 function M.setup(opts)
   local candidate = config.merge(config.defaults, opts)
   locked(function()
+    repair_splits()
     local previous = settings
     settings = candidate
     local ok, failure = pcall(function()
@@ -357,6 +370,7 @@ function M.disable(buf)
   buf = buffer_number(buf)
   return locked(function()
     remove_buffer(buf, "disable")
+    synchronize()
   end)
 end
 
@@ -365,6 +379,7 @@ function M.disable_all()
     for buf in pairs(vim.tbl_extend("force", {}, buffers)) do
       remove_buffer(buf, "disable")
     end
+    synchronize()
   end)
 end
 
@@ -445,13 +460,21 @@ function M._register()
       schedule()
     end,
   })
+  vim.api.nvim_create_autocmd("WinNewPre", {
+    group = group,
+    callback = function()
+      local win = vim.api.nvim_get_current_win()
+      splits.before(views[win], baselines[win])
+    end,
+  })
   vim.api.nvim_create_autocmd("WinNew", {
     group = group,
     callback = function()
       local win = vim.api.nvim_get_current_win()
       local buf = vim.api.nvim_win_get_buf(win)
+      local inherited = splits.after(win)
       if buffers[buf] then
-        local source = views[vim.fn.win_getid(vim.fn.winnr("#"))]
+        local source = inherited or views[vim.fn.win_getid(vim.fn.winnr("#"))]
         if not source and layout.last then
           source = views[layout.last]
         end

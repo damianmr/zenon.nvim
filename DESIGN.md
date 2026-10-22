@@ -34,9 +34,14 @@ This is the main layout tradeoff. Integrations should filter scratch windows.
 One or two separators also consume columns. When little margin space remains,
 use a single margin; a one-column gap can make the text one column narrower.
 
-If a user splits an enabled view, margins that no longer border their owner are
-removed and rebuilt. New views inherit the source view's saved baseline so
-turning zenon off restores the original editing options in both windows.
+Before a native split, `WinNewPre` records the source view's geometry without
+changing the layout. `WinNew` records the new window and its inherited option
+baseline. Once events settle, zenon removes the old margins and shares their
+space between the new host regions before rebuilding margins. Horizontal
+splits retain the full host width. Multiple splits before reconciliation are
+tracked together. Sidebars and explicit size changes made after `WinNew` keep
+their geometry. Turning zenon off restores the editing options in all views
+and leaves the resulting native split widths in place.
 
 ## Width
 

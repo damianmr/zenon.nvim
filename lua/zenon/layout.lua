@@ -14,13 +14,14 @@ end
 local function transaction(callback, owner)
   local equalalways = vim.o.equalalways
   local fixed, fixed_height = {}, {}
+  local owners = type(owner) == "table" and owner or { [owner] = true }
   vim.o.equalalways = false
   for _, win in ipairs(vim.api.nvim_list_wins()) do
     if vim.api.nvim_win_get_config(win).relative == "" then
       fixed[win] = options.get(win, "winfixwidth")
       fixed_height[win] = options.get(win, "winfixheight")
       local margin = M.padding[win]
-      options.set(win, "winfixwidth", win ~= owner and not (margin and margin.owner == owner))
+      options.set(win, "winfixwidth", not owners[win] and not (margin and owners[margin.owner]))
     end
   end
   local ok, result = xpcall(callback, debug.traceback)
@@ -41,6 +42,19 @@ local function transaction(callback, owner)
     error(result, 0)
   end
   return result
+end
+
+function M.redistribute(targets)
+  transaction(function()
+    local wins = vim.tbl_keys(targets)
+    table.sort(wins, function(a, b)
+      return targets[a] < targets[b]
+    end)
+    for _, win in ipairs(wins) do
+      vim.api.nvim_win_set_width(win, targets[win])
+      options.set(win, "winfixwidth", true)
+    end
+  end, targets)
 end
 
 function M.colors(view, amount)

@@ -78,7 +78,9 @@ Set wrap_navigation=false to preserve configured j/k movement.
 LAYOUT AND SCOPE                                                 *zenon-layout*
 
 Enabled state follows the buffer. A buffer may have independently sized views in
-several windows or tabs. Changing to another buffer restores the outgoing view;
+several windows or tabs. Splitting a view shares its whole pane, including margin
+space. Disabling leaves the resulting native splits in place.
+Changing to another buffer restores the outgoing view;
 returning to an enabled buffer recreates it. Focus changes do not disable it.
 
 The text stays in a native editing window. Unlisted scratch splits form empty
