@@ -119,7 +119,7 @@ documented in :help zenon-integrations and :help zenon-margins.
 `make test` exercises the public commands, real native windows, buffer lifecycles,
 wrapped-row motions, configuration validation, restoration, and hook failure
 handling in an isolated Neovim process. CI runs supported Neovim releases on
-Linux and macOS. Sidebar and terminal navigation also need real-plugin and TUI
+Ubuntu. Sidebar and terminal navigation also need real-plugin and TUI
 checks because a headless test alone does not establish tmux behavior.
 
 No source from the reference plugin is copied or adapted. The implementation
