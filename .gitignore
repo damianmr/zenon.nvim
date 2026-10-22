@@ -1,0 +1,18 @@
+# Local reference repositories and machine settings.
+/ideas/
+/.codex/
+/.agents/
+/.aws/
+
+# Editor and development output.
+.DS_Store
+*.swp
+*.swo
+*.log
+/doc/tags
+/tmp/
+
+# Credentials must never enter the repository.
+.env
+.env.*
+!.env.example
