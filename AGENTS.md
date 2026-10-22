@@ -1,7 +1,7 @@
 # Working on zenon
 
 zenon is a Neovim plugin for writing with a centered text area. The GitHub
-repository is `damianmr/zenon`; the Lua module and user-facing name are `zenon`.
+repository is `damianmr/zenon.nvim`; the Lua module and user-facing name are `zenon`.
 
 ## Project context
 

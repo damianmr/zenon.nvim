@@ -13,7 +13,7 @@ With lazy.nvim, including LazyVim, add a plugin spec:
 ```lua
 return {
   {
-    "damianmr/zenon",
+    "damianmr/zenon.nvim",
     main = "zenon",
     cmd = { "Zenon", "Zenoff" },
     opts = {},
@@ -24,7 +24,7 @@ return {
 With Neovim 0.12's native package manager:
 
 ```lua
-vim.pack.add({ "https://github.com/damianmr/zenon" })
+vim.pack.add({ "https://github.com/damianmr/zenon.nvim" })
 require("zenon").setup({}) -- Optional when using defaults.
 ```
 
