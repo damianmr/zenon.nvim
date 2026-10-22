@@ -54,8 +54,9 @@ repository is `damianmr/zenon`; the Lua module and user-facing name are `zenon`.
   usable implementation. Do not describe planned features as working features.
 - Do not commit local reference repositories, personal configuration, logs,
   credentials, generated help tags, or build output.
-- Use GitHub Actions from forks owned by `damianmr`, pinned to full commit SHAs.
-  Keep an inline comment identifying the upstream action and version.
+- Use official GitHub actions directly; use forks owned by `damianmr` for other
+  actions. Pin all actions to full commit SHAs, with an inline comment identifying
+  the upstream action and version.
 
 ## Licensing
 
