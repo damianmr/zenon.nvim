@@ -91,6 +91,11 @@ Third-party window pickers and :windo can see them; exclude those windows when
 appropriate. Tight widths may use one margin, and a one-column gap may make the
 text one column narrower than requested. Native window minimums also apply.
 
+Window-title plugins also see the margins. With lualine, add "zenon-margin" to
+options.disabled_filetypes.winbar in its setup to prevent [No Name] [-] titles.
+If using a separate lualine statusline per window, add the same filetype to
+options.disabled_filetypes.statusline. Keep existing exclusions in both lists.
+
 Changed options and installed mappings are restored only if they still match
 zenon's value, preserving later user changes. Global personal mappings remain in
 effect after local mappings are removed; remove global writing mappings if the

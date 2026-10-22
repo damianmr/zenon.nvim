@@ -117,6 +117,24 @@ pickers can see them. Window pickers should exclude `buftype=nofile` or
 `filetype=zenon-margin`. Very small margins may use one side only; with just one
 spare column the text can be one column narrower than requested.
 
+Plugins that draw window titles also see these margins. With lualine, add
+`"zenon-margin"` to `options.disabled_filetypes.winbar` in your existing setup:
+
+```lua
+require("lualine").setup({
+  options = {
+    disabled_filetypes = {
+      winbar = { "zenon-margin" },
+    },
+  },
+  -- Keep your other settings and existing exclusions.
+})
+```
+
+This prevents `[No Name] [-]` titles in the margins. If lualine draws a separate
+statusline in each window, also exclude `"zenon-margin"` from
+`options.disabled_filetypes.statusline`.
+
 One enabled buffer can appear in multiple windows. Each view gets its own width
 and saved window options. Changing to an unrelated buffer restores the old view;
 returning to the enabled buffer recreates it. Leaving a split, changing tabs,
