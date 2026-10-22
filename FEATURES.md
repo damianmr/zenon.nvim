@@ -1,20 +1,23 @@
-- This plugin is called zenon, it's to enable zen mode during writing.
+# zenon requirements
 
-- Implement it from these requirements with original code. Use zen-mode only
-  as inspiration for editor settings and behavior; do not copy its code.
-
-- I don't want tmux integration or code that is intended to address a specific environment. If that's needed, the user must be able to set it up through an extension hook that our plugin executes.
-
-- I'd like to use a ZenMode that uses 50% of the screen, within a certain minimum and maximum, it could be set during config but it should be possible to do so like :zenon 55, or zenon 55 600 or zenon 55 600 120 (:zenon <terminal_size percentage> <maximum> <minimum>)
-
-- When I switch to a different pane within tmux zenmode loses zen mode. I don't know why that happens but i don't want it. I want to stay in zen mode, respecting the size contraints above. I lose the zen mode when I hit Ctrl+hjkl.
-
-- the Zen mode in zenon applies to buffers... If I have more splits in my view then leave those as is.
-
-- I like the initial config the plugin zenmode applies to the vim config in terms of editing (navigation across pure text). Can you tell me what is it doing exactly? We want to replicate those settings.
-
-- I should be able to open nvim-tree without affecting the zen mode.
-
-- The plugin must be compatible with lazyvim and the default package manager of nvim (v12).
-
-- What good practices should we apply for this nvim plugin?
+- Implement zenon with original Lua code. Other plugins may inform editor
+  settings and behavior, but their implementation must not be copied.
+- Work per buffer. Other splits and sidebars remain visible and usable.
+- Stay enabled across split, tab, and application focus changes until explicitly
+  disabled, the buffer is wiped, or Neovim exits.
+- Provide `Zenon`, `Zenoff`, `Zenon 50`, `Zenon 50 1000`, and
+  `Zenon 50 1000 200`. `Zenon` enables or resizes; `Zenoff` disables.
+- Interpret width as a percentage of the current pane, with configurable minimum
+  and maximum text columns. Fit available space when it is below the minimum.
+- Make the wrapped continuation marker configurable as a string or disabled.
+- Make scrolling context and indented continuation rows configurable.
+- Provide comfortable wrapped-row navigation, word-boundary wrapping, a dim
+  background around the text, hidden end-of-buffer markers, and a disabled ruler.
+- Preserve partial command display (`showcmd`) and ordinary statuslines.
+- Allow nvim-tree to open and close without disabling enabled buffers.
+- Keep tmux, terminal, GUI, and other plugin integrations out of the core. Provide
+  lifecycle hooks for user-defined integrations.
+- Support LazyVim through lazy.nvim and native Neovim packages, including
+  `vim.pack` in Neovim 0.12.
+- Restore changed options and mappings while preserving later user changes.
+- Publish under MIT, selected by the owner.

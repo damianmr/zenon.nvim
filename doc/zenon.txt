@@ -1,0 +1,127 @@
+*zenon.txt*                  Buffer writing mode                         *zenon*
+
+zenon requires Neovim 0.12 or newer. Its implementation is original and MIT
+licensed. It has no required runtime dependencies.
+
+COMMANDS                                                     *zenon-commands*
+
+:Zenon [percentage [maximum [minimum]]]                              *:Zenon*
+    Enable or resize the current buffer. Repeating this command stays enabled.
+    Percentage refers to the host split, including its owned margins. Maximum
+    and minimum are text columns. Insufficient space wins over the minimum.
+    Omitted arguments retain the buffer's overrides or use setup defaults.
+
+:Zenoff                                                            *:Zenoff*
+    Disable the current buffer and restore its views and mappings.
+
+:Zenoff!
+    Disable all buffers. Disabling clears runtime overrides.
+
+CONFIGURATION                                                 *zenon-options*
+
+Setup is optional. Defaults: >lua
+    require("zenon").setup({
+      width = 50,
+      min_width = 80,
+      max_width = 160,
+      showbreak = "↪",       -- false or a string
+      scrolloff = 10,
+      breakindent = true,
+      wrap = true,
+      linebreak = true,
+      wrap_navigation = true,
+      hide_eob = true,
+      dim = 0.15,             -- false or a number from 0 to 1
+      ruler = false,
+      window_options = {
+        number = false,
+        relativenumber = false,
+        signcolumn = "no",
+        foldcolumn = "0",
+        list = false,
+        cursorline = false,
+        cursorcolumn = false,
+      },
+      hooks = {},
+    })
+<
+See |'showbreak'|, |'scrolloff'|, |'breakindent'|, |'wrap'| and |'linebreak'|.
+
+showbreak marks a wrapped continuation row, not a newline in the file.
+Indented continuation rows inherit the indentation of the original file line.
+No spaces or newlines are inserted. Formatting and spell checking are preserved;
+window_options.spell=true can enable spell checking in zenon views.
+
+ruler is global and remains configured until the last enabled buffer is disabled
+or wiped. showcmd, statuslines, and other global UI settings are preserved.
+
+The percentage must be finite and in (0, 100]. Bounds must be positive integers
+with min_width <= max_width. scrolloff must be a nonnegative integer. Unknown
+options are rejected. window_options accepts only window-local Neovim options.
+setup replaces setup defaults; runtime buffer overrides still take priority.
+
+NAVIGATION                                                   *zenon-navigation*
+
+Normal-mode j/k move by visible rows unless a count is provided. 5j moves through
+five file lines; 5gj moves through five visible rows. Operator-pending and Visual
+mappings are preserved. Existing buffer-local mappings take precedence.
+
+0, ^ and $ keep their file-line meanings. Use |g0|, |g^| and |g$| for screen rows.
+Set wrap_navigation=false to preserve configured j/k movement.
+
+LAYOUT AND SCOPE                                                 *zenon-layout*
+
+Enabled state follows the buffer. A buffer may have independently sized views in
+several windows or tabs. Changing to another buffer restores the outgoing view;
+returning to an enabled buffer recreates it. Focus changes do not disable it.
+
+The text stays in a native editing window. Unlisted scratch splits form empty
+margins. Other splits remain visible. Only the margins are dimmed, and transparent
+backgrounds remain transparent. Directional navigation skips margins. In enabled
+buffers Ctrl-W w, Ctrl-W Ctrl-W and Ctrl-W W cycle through editing windows, unless
+a buffer-local mapping already exists.
+
+Margins have buftype=nofile, filetype=zenon-margin and w:zenon_padding=v:true.
+Third-party window pickers and :windo can see them; exclude those windows when
+appropriate. Tight widths may use one margin, and a one-column gap may make the
+text one column narrower than requested. Native window minimums also apply.
+
+Changed options and installed mappings are restored only if they still match
+zenon's value, preserving later user changes. Global personal mappings remain in
+effect after local mappings are removed; remove global writing mappings if the
+behavior should apply only inside zenon.
+
+LUA AND HOOKS                                                      *zenon-api*
+
+require("zenon").enable(opts?, bufnr?)
+    Enable or resize a normal buffer. Defaults to the current buffer.
+require("zenon").disable(bufnr?)
+    Disable a buffer. Defaults to the current buffer.
+require("zenon").disable_all()
+require("zenon").is_enabled(bufnr?)
+    Return a boolean. Defaults to the current buffer.
+require("zenon").status(bufnr?)
+    Return { enabled, bufnr, reason, session_count, windows }.
+    Each window entry has winid, width, available.
+
+hooks.on_enable(ctx)
+    Runs once per buffer session, after views are created. May return a cleanup
+    function receiving context when the session ends. Errors roll back enable.
+hooks.on_disable(ctx)
+    Runs after session resources are removed. Errors are reported.
+hooks.on_resize(ctx)
+    Runs after a view is created or its geometry changes. Errors are reported.
+
+Context: bufnr, reason, session_count, windows. The window list may be empty for
+hidden buffers or after disable. Session count helps coordinate shared external
+state. Hooks may inspect state but must not call lifecycle functions recursively.
+
+Twilight is a separate plugin that dims inactive text regions. It is not loaded
+by zenon. Configure external integrations through hooks.
+
+DIAGNOSTICS                                                      *zenon-health*
+
+:checkhealth zenon
+    Check the Neovim version and current buffer session.
+
+ vim:tw=78:ts=8:ft=help:norl:

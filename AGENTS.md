@@ -6,11 +6,10 @@ repository is `damianmr/zenon`; the Lua module and user-facing name are `zenon`.
 ## Project context
 
 - Read `FEATURES.md` for the original requirements and `DESIGN.md` for the
-  analysis, proposed behavior, unresolved choices, and acceptance scenarios.
-- Keep original requirements separate from proposals. Do not treat unanswered
-  questions in `DESIGN.md` as approved decisions.
-- This repository starts with planning documents. There is no plugin
-  implementation or project test command yet.
+  implemented architecture and verification approach.
+- Run `make test` for isolated headless Neovim integration tests. Run
+  `make check` with StyLua 2.6.0 for formatting.
+- Keep the README and help file aligned with working behavior.
 - `ideas/zen-mode.nvim/` is an optional, ignored reference checkout. It is not a
   dependency or a submodule. The reviewed revision is
   `8564ce6d29ec7554eb9df578efa882d33b3c23a7` from
@@ -31,10 +30,12 @@ repository is `damianmr/zenon`; the Lua module and user-facing name are `zenon`.
 - Apply options with the narrowest appropriate scope. Restore changed state
   on disable, buffer replacement, window close, and failed initialization.
 - Support LazyVim through lazy.nvim and native Neovim packages, including
-  `vim.pack` on Neovim 0.12. Choose and document the minimum Neovim version
-  before implementation.
+  `vim.pack` on Neovim 0.12. The minimum Neovim version is 0.12.
 - Use the command name `:Zenon`; Neovim user commands start with a capital
-  letter. Do not install lowercase command abbreviations or keymaps by default.
+  letter. `:Zenon` enables or resizes; `:Zenoff` disables. Do not turn
+  `:Zenon` into a toggle. Width percentages use the host split.
+- Writing mappings belong to enabled buffers. Preserve existing buffer-local
+  mappings and restore only mappings and options still owned by zenon.
 
 ## Implementation and review
 
@@ -56,11 +57,9 @@ repository is `damianmr/zenon`; the Lua module and user-facing name are `zenon`.
 
 ## Licensing
 
-The project license is pending. The implementation must be original, so the
-reference plugin's license does not determine zenon's license. `DESIGN.md`
-compares MIT, Apache 2.0, and GPL 3.0. Keep the reference checkout outside the
-published tree. Preserve applicable notices for any separately approved
-third-party material introduced later.
+The owner selected MIT; see `LICENSE`. The implementation must remain original.
+Keep the reference checkout outside the published tree. Preserve applicable
+notices for any separately approved third-party material introduced later.
 
 ## Communication and GitHub
 
