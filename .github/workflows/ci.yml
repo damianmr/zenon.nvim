@@ -16,8 +16,8 @@ jobs:
         neovim: [v0.12.2, stable]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: rhysd/action-setup-vim@v1
+      - uses: damianmr/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout v4
+      - uses: damianmr/action-setup-vim@febef33995d6649302e9d88dda81e071b68f16a7 # rhysd/action-setup-vim v1
         with:
           neovim: true
           version: ${{ matrix.neovim }}
@@ -26,8 +26,8 @@ jobs:
   format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: JohnnyMorganz/stylua-action@v5
+      - uses: damianmr/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout v4
+      - uses: damianmr/stylua-action@76fd70c03e6340ceaf673366712db9b20560b402 # JohnnyMorganz/stylua-action v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: v2.6.0
