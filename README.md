@@ -28,6 +28,13 @@ vim.pack.add({ "https://github.com/damianmr/zenon.nvim" })
 require("zenon").setup({}) -- Optional when using defaults.
 ```
 
+These examples follow `main`. To stay on a fixed version, choose an existing tag
+from [Releases](https://github.com/damianmr/zenon.nvim/releases). Add
+`tag = "vX.Y.Z"` to the lazy.nvim spec, replacing `vX.Y.Z` with that tag. For
+`vim.pack`, use a table with `src = "https://github.com/damianmr/zenon.nvim"`
+and `version = "vX.Y.Z"` instead of the URL string. Change the tag when you want
+to upgrade.
+
 ## Commands
 
 | Command | Effect |
@@ -181,6 +188,18 @@ Run `make test` for isolated headless Neovim integration tests, `make check` for
 StyLua checks, and `:checkhealth zenon` inside Neovim for basic diagnostics.
 StyLua 2.6.0 is used in CI. See [DESIGN.md](DESIGN.md) for layout decisions and
 the verification approach.
+
+## Releases
+
+Open **Actions → Release → Run workflow** on GitHub, select `main`, and enter
+an unused version such as `v0.1.0`. You can add a short summary and upgrade
+instructions to the generated release notes. Select **dry_run** to run the full
+process without creating a tag or release.
+
+The workflow runs the same tests and formatting checks as CI, then tags the
+exact commit that passed and publishes a GitHub release. GitHub provides source
+downloads; this Lua plugin needs no compiled release files. Published version
+tags stay fixed. Fixes use a new version.
 
 ## License
 

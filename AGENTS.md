@@ -58,6 +58,21 @@ repository is `damianmr/zenon.nvim`; the Lua module and user-facing name are `ze
   actions. Pin all actions to full commit SHAs, with an inline comment identifying
   the upstream action and version.
 
+## Releases
+
+- Publish versions intentionally through the manual `Release` workflow on
+  `main`. Routine commits do not require a release.
+- Use `vMAJOR.MINOR.PATCH` tags. Bump patch for fixes, minor for added features,
+  and major for breaking changes. Before 1.0, bump minor for breaking changes.
+- Require all CI checks to pass and tag the exact commit that was tested.
+  Use the workflow's dry run to check the process without publishing.
+- Never move, overwrite, or delete a published version tag or replace its
+  assets. Keep GitHub release immutability enabled; publish fixes as new versions.
+- Include user-facing changes and any upgrade steps in release notes, especially
+  changes to options, commands, defaults, or the minimum Neovim version.
+- Once a release exists, pin installation examples to a published tag and keep
+  them current. Never document a nonexistent tag as an installable release.
+
 ## Licensing
 
 The owner selected MIT; see `LICENSE`. The implementation must remain original.
