@@ -63,34 +63,26 @@ minimum of 80 text columns and no maximum. With one split and no gutters:
 On a 120-column split, 50% is 60 columns, so the minimum makes the text about
 80 columns wide. The percentage includes the text window and its margins.
 Gutters, such as line numbers, can reduce the space for text. If the split is
-too narrow for the minimum, `zenon.nvim` uses the width available. `:Zenon`
-never toggles off.
+too narrow for the minimum, `zenon.nvim` uses the width available.
 
 ## What to expect
 
-Your file stays in its editing window. `zenon.nvim` adds blank windows as
-margins and centers the text inside the split. If the buffer appears in several
-windows, each window gets its own width. When you switch to another buffer,
-the first one stays enabled. Its margins return when you switch back. You can
-open `nvim-tree` or another sidebar without turning `zenon.nvim` off.
-
-`zenon.nvim` wraps long lines on screen. In normal mode, `j` and `k` move by
-visible rows. File contents, undo history, formatting, and spell checking stay
-the same. On disable, `zenon.nvim` restores options and mappings that still
-match what it set. It keeps changes you made later.
-
-Margins are real windows. Commands such as `:windo` and window pickers can see
-them. Filter `filetype=zenon-margin` in tools that should skip margins. With
-several editing splits, `zenon.nvim` centers text inside each split. It does not
-keep one selected buffer at the center of the whole Neovim screen.
+- Your file stays in its editing window. Blank windows form the margins.
+- Text is centered inside each split. If a buffer appears in several windows,
+  each window gets its own width.
+- Buffers stay enabled when you switch files. Their margins return when you
+  switch back.
+- Other splits and sidebars, such as `nvim-tree`, stay usable.
+- Long lines wrap on screen. In normal mode, `j` and `k` move by visible rows.
+- File contents, undo history, formatting, and spell checking stay the same.
+- On disable, `zenon.nvim` restores options and mappings that still match what
+  it set. It keeps changes you made later.
+- Margins are real windows, visible to `:windo` and window pickers. Filter
+  `filetype=zenon-margin` in tools that should skip them.
 
 ## Configure
 
-Setup is optional. With `lazy.nvim` or `LazyVim`, put your changes in `opts`.
-With other package managers, pass them to `require("zenon").setup()`.
-You only need to include the options you want to change.
-
-These are the defaults, with a quick explanation of each option:
+Default settings:
 
 ```lua
 require("zenon").setup({
@@ -128,28 +120,30 @@ require("zenon").setup({
 })
 ```
 
-`min_width` and `max_width` count text columns. Both must be positive integers,
-and a maximum must be at least the minimum. Available space takes priority
-when a split is too narrow. `scrolloff` must be a nonnegative integer.
+Setup is optional. Pass overrides to `setup()` or your plugin spec's `opts`.
 
-`window_options` accepts any window-local Neovim option and overrides the
-corresponding display settings above. For example, use
+`min_width` and `max_width` are positive integers in text columns, with
+`max_width >= min_width`. Narrow splits use the available space.
+`scrolloff` is a nonnegative integer.
+
+`window_options` accepts window-local Neovim options and takes priority over
+the display settings above. Use
 `window_options = { spell = true, number = true }` to enable spell checking
-and keep line numbers. Entries you omit keep their defaults. Window options
-are restored when leaving a view; buffer mappings are restored
-on disable. Later user changes are kept.
+and keep line numbers. Omitted entries keep their defaults. `zenon.nvim`
+restores window options when leaving a view and buffer mappings on disable.
+It keeps later user changes.
 
 Existing buffer-local `j`/`k` mappings take priority over `wrap_navigation`.
-Set it to `false` to keep your configured movement. `ruler` is global and is
-restored after the last enabled buffer is disabled; `showcmd` and statuslines
-stay as configured.
+Set `wrap_navigation = false` to keep your configured movement. `ruler` is
+global; `zenon.nvim` restores it after the last buffer is disabled.
+It leaves `showcmd` and statuslines alone.
 
 The `lualine` adapter hides margin winbars and window statuslines while keeping
-file titles and the global statusline. It does not load `lualine` for you.
-Set `integrations = { lualine = false }` to turn it off. Registered custom
-adapters can also be enabled by name in this table.
+file titles and the global statusline. It requires an already loaded `lualine`.
+Set `integrations = { lualine = false }` to disable it. Enable registered
+custom adapters by name in `integrations`.
 
-Use `hooks` for custom behavior:
+`hooks` accepts these callbacks:
 
 | Callback | When it runs |
 | --- | --- |
@@ -159,9 +153,8 @@ Use `hooks` for custom behavior:
 
 Each callback receives `ctx.bufnr`, `ctx.reason`, `ctx.session_count`, and
 `ctx.windows`. Each window entry has `winid`, `width`, and `available`.
-The window list can be empty for hidden buffers or after disable. Hooks can
-read state, but must not enable, disable, or reconfigure `zenon.nvim` inside
-a callback.
+The window list can be empty for hidden buffers or after disable. Hooks must
+not enable, disable, or reconfigure `zenon.nvim`.
 
 For per-buffer overrides, use `require("zenon").enable({ width = 60 })`.
 Use `{ max_width = false }` to clear an inherited maximum. Runtime overrides
