@@ -80,7 +80,7 @@ too narrow for the minimum, `zenon.nvim` uses the width available.
 - Margins are real windows, visible to `:windo` and window pickers. Filter
   `filetype=zenon-margin` in tools that should skip them.
 
-## Configure
+## Configuration
 
 Default settings:
 
@@ -120,45 +120,57 @@ require("zenon").setup({
 })
 ```
 
+### Overrides
+
 Setup is optional. Pass overrides to `setup()` or your plugin spec's `opts`.
+Omitted options keep their defaults.
 
-`min_width` and `max_width` are positive integers in text columns, with
-`max_width >= min_width`. Narrow splits use the available space.
-`scrolloff` is a nonnegative integer.
+| Setting | Behavior |
+| --- | --- |
+| `min_width`, `max_width` | Positive integers in text columns. A maximum must be at least the minimum. Narrow splits use the available space. |
+| `scrolloff` | A nonnegative integer. |
+| `window_options` | Accepts window-local Neovim options and takes priority over the display settings above. For example, `{ spell = true, number = true }` enables spell checking and line numbers. |
+| `wrap_navigation` | Existing buffer-local `j`/`k` mappings take priority. Set to `false` to keep your configured movement. |
+| `ruler` | Global. Restored after the last enabled buffer is disabled. `showcmd` and statuslines stay as configured. |
 
-`window_options` accepts window-local Neovim options and takes priority over
-the display settings above. Use
-`window_options = { spell = true, number = true }` to enable spell checking
-and keep line numbers. Omitted entries keep their defaults. `zenon.nvim`
-restores window options when leaving a view and buffer mappings on disable.
-It keeps later user changes.
+`zenon.nvim` restores window options when leaving a view and buffer mappings
+on disable. It keeps later user changes.
 
-Existing buffer-local `j`/`k` mappings take priority over `wrap_navigation`.
-Set `wrap_navigation = false` to keep your configured movement. `ruler` is
-global; `zenon.nvim` restores it after the last buffer is disabled.
-It leaves `showcmd` and statuslines alone.
+For per-buffer settings:
 
-The `lualine` adapter hides margin winbars and window statuslines while keeping
-file titles and the global statusline. It requires an already loaded `lualine`.
-Set `integrations = { lualine = false }` to disable it. Enable registered
-custom adapters by name in `integrations`.
+```lua
+require("zenon").enable({ width = 60, max_width = false })
+```
 
-`hooks` accepts these callbacks:
+These override setup defaults until the buffer is disabled.
+`max_width = false` removes an inherited maximum.
+
+### Integrations
+
+The `lualine` adapter requires an already loaded `lualine`. It hides margin
+winbars and window statuslines, keeping file titles and the global statusline.
+Disable it with `integrations = { lualine = false }`.
+
+Enable registered custom adapters by name in `integrations`.
+
+### Hooks
+
+Add callbacks to `hooks`:
 
 | Callback | When it runs |
 | --- | --- |
-| `on_enable = function(ctx) ... end` | Once per enabled buffer, after its views are created. May return a cleanup function that receives context when the session ends. |
-| `on_disable = function(ctx) ... end` | After the buffer's session resources are removed. |
-| `on_resize = function(ctx) ... end` | After a view is created or its geometry changes. |
+| `on_enable(ctx)` | Once per enabled buffer, after its views are created. May return a cleanup function that receives context when the session ends. |
+| `on_disable(ctx)` | After the buffer's session resources are removed. |
+| `on_resize(ctx)` | After a view is created or its geometry changes. |
 
-Each callback receives `ctx.bufnr`, `ctx.reason`, `ctx.session_count`, and
-`ctx.windows`. Each window entry has `winid`, `width`, and `available`.
-The window list can be empty for hidden buffers or after disable. Hooks must
-not enable, disable, or reconfigure `zenon.nvim`.
+| Context field | Value |
+| --- | --- |
+| `ctx.bufnr` | Buffer number. |
+| `ctx.reason` | Reason for the callback. |
+| `ctx.session_count` | Number of enabled buffer sessions. |
+| `ctx.windows` | Window entries with `winid`, `width`, and `available`. Can be empty for hidden buffers or after disable. |
 
-For per-buffer overrides, use `require("zenon").enable({ width = 60 })`.
-Use `{ max_width = false }` to clear an inherited maximum. Runtime overrides
-take priority over setup defaults and are cleared on disable.
+Hooks must not enable, disable, or reconfigure `zenon.nvim`.
 
 See [the help file](doc/zenon.txt) or `:help zenon` for the full Lua API,
 custom adapter callbacks, and the margin contract.
