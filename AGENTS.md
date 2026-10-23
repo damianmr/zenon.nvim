@@ -1,7 +1,8 @@
-# Working on zenon
+# Working on zenon.nvim
 
-zenon centers text for writing in Neovim. The repository is
-`damianmr/zenon.nvim`; the Lua module and plugin name are `zenon`.
+`zenon.nvim` centers text for writing in Neovim. The repository is
+`damianmr/zenon.nvim`. Use `zenon.nvim` in prose. Keep the Lua module `zenon`,
+the commands, and the margin identifiers unchanged.
 
 ## Project context
 
@@ -27,17 +28,17 @@ zenon centers text for writing in Neovim. The repository is
   `is_margin()`, and integration context metadata. Document contract changes in
   the help file. Test adapter cleanup, state restoration, and availability.
 - Keep other splits, sidebars, and floating tools usable. Focus changes must not
-  disable zenon. Enabled state belongs to the buffer.
+  disable zenon.nvim. Enabled state belongs to the buffer.
 - Support percentage width with an optional maximum and a minimum in screen
   columns. Use the host split, including margins. Define edge cases before coding.
 - Preserve buffer contents, undo history, cursor, and view. Use the narrowest
-  option scope. Restore state zenon owns on disable, buffer replacement, window
-  close, and failed initialization. Keep later user changes.
+  option scope. Restore state owned by zenon.nvim on disable, buffer replacement,
+  window close, and failed initialization. Keep later user changes.
 - Support Neovim 0.12+, lazy.nvim and LazyVim, and native packages with `vim.pack`.
 - `:Zenon` enables or resizes; it never toggles off. `:Zenoff` disables. Neovim
   user commands must start with a capital letter.
 - Keep writing mappings local to enabled buffers. Preserve existing buffer
-  mappings and remove only mappings zenon still owns.
+  mappings and remove only mappings zenon.nvim still owns.
 
 ## Layout and cleanup
 
@@ -54,7 +55,7 @@ zenon centers text for writing in Neovim. The repository is
 - Preserve `equalalways`, `winfixwidth`, and `winfixheight` during layout changes.
   Avoid a resize when margins already have the requested width.
 - Save raw local option values, including inherited values. Restore options and
-  mappings only while they still match what zenon set. If `:close` leaves only
+  mappings only while they still match what zenon.nvim set. If `:close` leaves only
   margins, reuse one to keep the file visible.
 - Keep one attachment per adapter while an enabled buffer requests it. Give
   each callback a separate context snapshot. If an adapter fails, finish cleanup

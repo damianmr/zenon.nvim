@@ -33,7 +33,7 @@ local function call(entry, method, ...)
   if not ok then
     local phase = method == "available" and "check availability" or method
     vim.notify(
-      ("zenon: integration '%s' failed to %s: %s"):format(entry.name, phase, tostring(result)),
+      ("zenon.nvim: integration '%s' failed to %s: %s"):format(entry.name, phase, tostring(result)),
       vim.log.levels.WARN
     )
   end
@@ -50,20 +50,20 @@ end
 
 function M.register(name, spec)
   if type(name) ~= "string" or name == "" then
-    error("zenon: integration name must be a nonempty string", 0)
+    error("zenon.nvim: integration name must be a nonempty string", 0)
   end
   if registered[name] then
-    error("zenon: integration '" .. name .. "' is already registered", 0)
+    error("zenon.nvim: integration '" .. name .. "' is already registered", 0)
   end
   if type(spec) ~= "table" or type(spec.attach) ~= "function" then
-    error("zenon: integration '" .. name .. "' requires an attach function", 0)
+    error("zenon.nvim: integration '" .. name .. "' requires an attach function", 0)
   end
   for key, value in pairs(spec) do
     if not vim.tbl_contains({ "available", "attach", "update", "detach" }, key) then
-      error("zenon: unknown integration callback '" .. tostring(key) .. "'", 0)
+      error("zenon.nvim: unknown integration callback '" .. tostring(key) .. "'", 0)
     end
     if type(value) ~= "function" then
-      error("zenon: integration callback '" .. key .. "' must be a function", 0)
+      error("zenon.nvim: integration callback '" .. key .. "' must be a function", 0)
     end
   end
   local entry = { name = name, spec = vim.tbl_extend("force", {}, spec) }

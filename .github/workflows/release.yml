@@ -77,5 +77,5 @@ jobs:
             fi
           fi
           gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" \
-            --verify-tag --title "zenon $VERSION" \
+            --verify-tag --title "zenon.nvim $VERSION" \
             --generate-notes --notes "$RELEASE_NOTES"

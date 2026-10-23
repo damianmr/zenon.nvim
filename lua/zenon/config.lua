@@ -51,7 +51,7 @@ end
 
 local function check(ok, message)
   if not ok then
-    error("zenon: " .. message, 0)
+    error("zenon.nvim: " .. message, 0)
   end
 end
 

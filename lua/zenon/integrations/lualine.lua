@@ -59,7 +59,7 @@ end
 
 function M.update(ctx, state)
   apply(state)
-  -- A plugin loaded after zenon may already have drawn bars in existing margins.
+  -- A plugin loaded after zenon.nvim may already have drawn bars in existing margins.
   for _, margin in ipairs(ctx.margins) do
     local win = margin.winid
     if vim.api.nvim_win_is_valid(win) and vim.w[win].zenon_padding then

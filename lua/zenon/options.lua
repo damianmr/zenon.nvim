@@ -85,7 +85,7 @@ function M.map(session, key, callback, description, expression)
     buffer = session.buf,
     expr = expression or false,
     silent = true,
-    desc = "zenon: " .. description,
+    desc = "zenon.nvim: " .. description,
   })
   session.maps[key] = callback
 end

@@ -115,7 +115,7 @@ local function real_windows()
 end
 
 -- Ask Neovim for its own split sizes rather than fixing a screen size or
--- duplicating zenon's width calculation in the expected result.
+-- duplicating zenon.nvim's width calculation in the expected result.
 local function native_widths(commands)
   local wins = { api.nvim_get_current_win() }
   local ok, result = xpcall(function()
@@ -150,7 +150,7 @@ end
 local function wait_views(count, buf)
   flush(function()
     return #zenon.status(buf).windows == count
-  end, "timed out waiting for " .. count .. " zenon views")
+  end, "timed out waiting for " .. count .. " zenon.nvim views")
   return zenon.status(buf).windows
 end
 
@@ -307,7 +307,7 @@ test("writing options are configurable and scoped to the enabled window", functi
   eq(" ", vim.opt_local.fillchars:get().eob)
 end)
 
-test("zen follows a buffer through replacement without leaking window options", function()
+test("zenon.nvim follows a buffer through replacement without leaking window options", function()
   local original = api.nvim_get_current_buf()
   local replacement = editing_buffer()
   zenon.enable()
@@ -475,7 +475,7 @@ test("mixed splits before reconciliation keep their separate host regions", func
   end
 end)
 
-test("splitting again preserves the neighboring zen view", function()
+test("splitting again preserves the neighboring zenon.nvim view", function()
   vim.o.splitright = true
   local expected = native_widths({ "vsplit", "vsplit" })
   local neighbor = api.nvim_get_current_win()
@@ -494,7 +494,7 @@ test("splitting again preserves the neighboring zen view", function()
   eq(widths[neighbor], api.nvim_win_get_width(neighbor))
 end)
 
-test("splitting a zen view preserves an existing sidebar", function()
+test("splitting a zenon.nvim view preserves an existing sidebar", function()
   vim.o.splitright = true
   local source = api.nvim_get_current_win()
   vim.cmd("topleft vnew")
@@ -539,7 +539,7 @@ test("a new sidebar keeps the size assigned after WinNew", function()
   eq(false, vim.wo[sidebar].wrap)
 end)
 
-test("a sidebar stays usable while zen resizes", function()
+test("a sidebar stays usable while zenon.nvim resizes", function()
   local host, buf = api.nvim_get_current_win(), api.nvim_get_current_buf()
   local available = api.nvim_win_get_width(host)
   zenon.enable()
@@ -875,7 +875,7 @@ test("a new unrelated split does not inherit the source writing profile", functi
   eq(24, vim.wo[other].scrolloff)
 end)
 
-test("one buffer retains independent zen views across tabs", function()
+test("one buffer retains independent zenon.nvim views across tabs", function()
   local buf = api.nvim_get_current_buf()
   zenon.enable()
   vim.cmd("tab split")

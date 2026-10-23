@@ -52,7 +52,7 @@ local function integration_context()
 end
 
 local function notify(message)
-  vim.notify("zenon: " .. tostring(message), vim.log.levels.ERROR)
+  vim.notify("zenon.nvim: " .. tostring(message), vim.log.levels.ERROR)
 end
 
 local function global_options()
@@ -109,7 +109,7 @@ end
 
 local function locked(callback)
   if busy then
-    error("zenon: a lifecycle operation is already running", 0)
+    error("zenon.nvim: a lifecycle operation is already running", 0)
   end
   busy = true
   local ok, result = xpcall(callback, debug.traceback)
@@ -276,7 +276,7 @@ end
 function M.enable(opts, buf)
   buf = buffer_number(buf)
   if not vim.api.nvim_buf_is_valid(buf) or vim.bo[buf].buftype ~= "" then
-    error("zenon: enable a normal editing buffer", 0)
+    error("zenon.nvim: enable a normal editing buffer", 0)
   end
   local existing = buffers[buf]
   local candidate = config.merge(existing and existing.options or settings, opts)
@@ -299,7 +299,7 @@ function M.enable(opts, buf)
       if not existing then
         local cleanup = hook(session, "on_enable", "enable", true)
         if cleanup ~= nil and type(cleanup) ~= "function" then
-          error("zenon: on_enable must return a cleanup function or nil", 0)
+          error("zenon.nvim: on_enable must return a cleanup function or nil", 0)
         end
         session.cleanup = cleanup
       end
@@ -388,7 +388,7 @@ local function register()
     command(function(args)
       M.enable(config.command(args.fargs))
     end),
-    { nargs = "*", desc = "Enable or resize zenon: [percentage [maximum [minimum]]]" }
+    { nargs = "*", desc = "Enable or resize zenon.nvim: [percentage [maximum [minimum]]]" }
   )
   vim.api.nvim_create_user_command(
     "Zenoff",
@@ -399,7 +399,7 @@ local function register()
         M.disable()
       end
     end),
-    { bang = true, desc = "Disable zenon for this buffer; ! disables every buffer" }
+    { bang = true, desc = "Disable zenon.nvim for this buffer; ! disables every buffer" }
   )
   local group = vim.api.nvim_create_augroup("Zenon", { clear = true })
   local function on(events, callback, nested)

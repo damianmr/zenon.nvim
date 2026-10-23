@@ -1,6 +1,6 @@
-*zenon.txt*                  Buffer writing mode                         *zenon*
+*zenon.txt*                  zenon.nvim buffer writing mode               *zenon*
 
-zenon requires Neovim 0.12 or newer. Its Lua code is original and MIT licensed.
+zenon.nvim requires Neovim 0.12 or newer. Its Lua code is original and MIT licensed.
 It has no required runtime dependencies.
 
 COMMANDS                                                     *zenon-commands*
@@ -8,7 +8,7 @@ COMMANDS                                                     *zenon-commands*
 :Zenon [percentage [maximum [minimum]]]                              *:Zenon*
     Enable or resize the current buffer. Repeating this command keeps it enabled.
     Percentage refers to the host split, including its owned margins. Maximum
-    and minimum are text columns. If there is too little space, zenon uses the
+    and minimum are text columns. If there is too little space, zenon.nvim uses the
     available width.
     Omitted arguments keep the buffer's overrides or use setup defaults.
 
@@ -52,11 +52,11 @@ See |'showbreak'|, |'scrolloff'|, |'breakindent'|, |'wrap'| and |'linebreak'|.
 showbreak marks a wrapped continuation row. It does not add a newline to the
 file. Wrapped rows keep the original line's indentation. These settings change
 the display. Formatting and spell checking stay as configured;
-window_options.spell=true can enable spell checking in zenon views.
+window_options.spell=true can enable spell checking in zenon.nvim views.
 
 ruler is global. If enabled buffers request different values, false takes
-priority. After the last enabled buffer is disabled or wiped, zenon restores
-the old value if it still matches what zenon set. showcmd, statuslines, and
+priority. After the last enabled buffer is disabled or wiped, zenon.nvim restores
+the old value if it still matches what zenon.nvim set. showcmd, statuslines, and
 other global UI settings stay as configured.
 
 Omit max_width for no maximum beyond the available space. Use
@@ -68,7 +68,7 @@ integer. When set, max_width must be a positive integer at least min_width;
 false also means no maximum. scrolloff must be a nonnegative integer. Unknown
 options are rejected. window_options accepts only window-local Neovim options.
 setup replaces setup defaults; runtime buffer overrides still take priority.
-zenon checks options before changing state. If setup or enable fails, zenon
+zenon.nvim checks options before changing state. If setup or enable fails, zenon.nvim
 restores the old session or removes the new one.
 
 WIDTH AND SPLITS                                                   *zenon-width*
@@ -76,7 +76,7 @@ WIDTH AND SPLITS                                                   *zenon-width*
 The host region is the editing window plus its margins and separators. Width
 percentages use the host region after subtracting retained gutters, such as
 line numbers. min_width and max_width count text columns after those gutters.
-zenon calculates the target width as follows: >text
+zenon.nvim calculates the target width as follows: >text
     text_space = max(1, host_columns - retained_gutters)
     desired = floor(text_space * width / 100)
     target = min(text_space, max_width or text_space,
@@ -87,10 +87,10 @@ min_width. Neovim's window minimums and separators still apply. Small gaps use
 one margin; with only one spare column, text can be one column narrower than the
 target.
 
-zenon updates layout after window and terminal size changes. A vertical split
+zenon.nvim updates layout after window and terminal size changes. A vertical split
 shares the old host region, including margin space. A horizontal split keeps the
 full host width. Existing sidebars keep their size. Later manual resizes also
-stay in place. zenon groups related window events into one update. It leaves
+stay in place. zenon.nvim groups related window events into one update. It leaves
 margins alone when they already have the requested width.
 
 NAVIGATION                                                   *zenon-navigation*
@@ -104,14 +104,14 @@ Set wrap_navigation=false to preserve configured j/k movement.
 
 LAYOUT AND SCOPE                                                 *zenon-layout*
 
-Enable zenon for a buffer. It can have a view in several windows or tabs, each
+Enable zenon.nvim for a buffer. It can have a view in several windows or tabs, each
 with its own width and saved options. Splitting a view shares the whole pane,
 including margins. Disabling keeps the resulting native splits. Changing buffers
 restores the outgoing view's options; returning creates its margins again.
 Focus changes keep the buffer enabled.
 
 The file stays in its editing window. Blank scratch splits form the margins.
-Other splits stay visible. zenon dims the margins and keeps transparent
+Other splits stay visible. zenon.nvim dims the margins and keeps transparent
 backgrounds transparent. Margin colors follow the colorscheme. Directional
 navigation skips margins. In enabled buffers Ctrl-W w, Ctrl-W Ctrl-W and
 Ctrl-W W cycle through editing windows.
@@ -124,17 +124,17 @@ needed.
 The lualine adapter excludes margins from winbars and window statuslines to hide
 [No Name] [-] titles. It uses an already loaded lualine instance and keeps file
 titles and the global statusline. It restores exclusions that still match what
-zenon set and keeps existing entries and later user changes. Set
+zenon.nvim set and keeps existing entries and later user changes. Set
 integrations.lualine=false to manage this yourself.
 
-zenon restores options and mappings only if they still match what it set. It
+zenon.nvim restores options and mappings only if they still match what it set. It
 keeps later user changes. Global mappings still apply after disable. Remove
-global writing mappings if you want them only inside zenon.
+global writing mappings if you want them only inside zenon.nvim.
 
 Saved local option values include inherited values. Replacing the buffer in a
 window restores that window's options; returning to an enabled buffer creates a
-new view. Before quitting a view, zenon removes its margins. If closing the last
-editing window leaves only margins, zenon reuses one for the file.
+new view. Before quitting a view, zenon.nvim removes its margins. If closing the last
+editing window leaves only margins, zenon.nvim reuses one for the file.
 
 LUA AND HOOKS                                                      *zenon-api*
 
@@ -161,10 +161,10 @@ hooks.on_resize(ctx)
 
 Context: bufnr, reason, session_count, windows. The window list may be empty for
 hidden buffers or after disable. Use session_count for external state shared by
-buffers. Hooks can read state but must not change zenon's state inside a callback.
+buffers. Hooks can read state but must not change zenon.nvim's state inside a callback.
 
 Twilight is a separate plugin that dims inactive text regions. It is not loaded
-by zenon. Configure external integrations through hooks.
+by zenon.nvim. Configure external integrations through hooks.
 
 INTEGRATIONS                                               *zenon-integrations*
 
@@ -180,8 +180,8 @@ An integration has these callbacks:
 available() -> boolean
     Optional. Check whether the other plugin is already available, for example
     through package.loaded. Omit this callback for an always-available adapter.
-    zenon checks availability on enable and scheduled window events.
-    zenon does not load the other plugin or poll for it.
+    zenon.nvim checks availability on enable and scheduled window events.
+    zenon.nvim does not load the other plugin or poll for it.
 attach(ctx) -> state
     Required. Called once when at least one enabled buffer requests the adapter
     and it is available. Runs before new margins are created, so ctx.windows
@@ -205,8 +205,8 @@ Lists cover all tabs and are sorted by buffer or window ID. Buffers share the
 adapter; any enabled buffer requesting it keeps it active. Use hooks for behavior
 that should run separately for each buffer.
 
-Callbacks can read state but must not change zenon's state inside a callback.
-zenon reports errors and continues editor cleanup and other integrations.
+Callbacks can read state but must not change zenon.nvim's state inside a callback.
+zenon.nvim reports errors and continues editor cleanup and other integrations.
 An update error detaches that adapter. After an availability, attach, or update
 error, the adapter is not retried until it is disabled and enabled again. A
 detach error is reported once and does not block cleanup of other resources.
@@ -231,7 +231,7 @@ view may share a scratch buffer; buffer IDs do not identify individual windows.
 Window and buffer IDs can change during resize, buffer replacement, or layout
 repair. Use IDs from the current context and check that they are valid before
 later work. Do not edit margin buffers or move, close, or reuse their windows.
-zenon sets their filetype before creating windows and suppresses native window
+zenon.nvim sets their filetype before creating windows and suppresses native window
 creation autocommands. Use update(ctx, state) for window changes. Internal tables
 and highlight group names are private.
 
