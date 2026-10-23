@@ -1,9 +1,13 @@
 # `zenon.nvim`
 
-`zenon.nvim` centers text for writing in Neovim 0.12+. Enable it for a buffer.
-It stays enabled when you change windows, open splits, or use a sidebar.
+`zenon.nvim` adds a zen mode to Neovim for reading and writing. It centers
+text at a comfortable width and lets you move through wrapped lines as they
+appear on screen. Enable it for a buffer, then open other files, splits, or a
+sidebar. That buffer stays in zen mode when you return.
 
 ## Install
+
+Requires Neovim 0.12 or newer.
 
 With `lazy.nvim` or `LazyVim`:
 
@@ -11,6 +15,7 @@ With `lazy.nvim` or `LazyVim`:
 return {
   {
     "damianmr/zenon.nvim",
+    tag = "v1.0.0",
     main = "zenon",
     cmd = { "Zenon", "Zenoff" },
     opts = {},
@@ -21,14 +26,14 @@ return {
 With Neovim's native package manager:
 
 ```lua
-vim.pack.add({ "https://github.com/damianmr/zenon.nvim" })
+vim.pack.add({
+  { src = "https://github.com/damianmr/zenon.nvim", version = "v1.0.0" },
+})
 require("zenon").setup({}) -- Optional with the default settings.
 ```
 
-These examples use `main`. To use a fixed version, choose a published tag from
-[Releases](https://github.com/damianmr/zenon.nvim/releases). Add `tag = "vX.Y.Z"`
-to the `lazy.nvim` spec. With `vim.pack`, pass a table with `src` set to the URL
-above and `version` set to that tag.
+Both examples install the published
+[`v1.0.0` release](https://github.com/damianmr/zenon.nvim/releases/tag/v1.0.0).
 
 ## Use
 
