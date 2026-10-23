@@ -121,9 +121,9 @@ function M.merge(base, overrides)
 end
 
 function M.command(arguments)
-  check(#arguments <= 3, "usage: Zenon [percentage [maximum [minimum]]]")
+  check(#arguments <= 3, "usage: Zenon [percentage [minimum [maximum]]]")
   local result = {}
-  for index, key in ipairs({ "width", "max_width", "min_width" }) do
+  for index, key in ipairs({ "width", "min_width", "max_width" }) do
     if arguments[index] then
       result[key] = tonumber(arguments[index])
       check(result[key] ~= nil, key .. " must be a number")

@@ -35,14 +35,25 @@ above and `version` set to that tag.
 | Command | What it does |
 | --- | --- |
 | `:Zenon` | Enable the current buffer, or resize it with its current settings. |
-| `:Zenon 60` | Use 60% of each split that shows the buffer. |
-| `:Zenon 60 120 80` | Use 60%, up to 120 and at least 80 text columns. |
+| `:Zenon 60` | Request 60% of each split that shows the buffer. |
+| `:Zenon 60 80` | Request 60%, with a minimum of 80 text columns. |
+| `:Zenon 60 80 120` | Request 60%, with a minimum of 80 and a maximum of 120 text columns. |
 | `:Zenoff` | Disable the current buffer. |
 | `:Zenoff!` | Disable all enabled buffers. |
 
-`:Zenon` never toggles off. The percentage includes the text window and its
-margins. If there is too little room for the minimum width, `zenon.nvim` uses
-the width available. Run `:Zenon` with another number to change the percentage.
+The command order is percentage, minimum, maximum. The default is 50%, with a
+minimum of 80 text columns and no maximum. With one split and no gutters:
+
+| Split width | 50% | Text width |
+| --- | ---: | ---: |
+| 120 columns | 60 columns | about 80 columns |
+| 200 columns | 100 columns | about 100 columns |
+
+On a 120-column split, 50% is 60 columns, so the minimum makes the text about
+80 columns wide. The percentage includes the text window and its margins.
+Gutters, such as line numbers, can reduce the space for text. If the split is
+too narrow for the minimum, `zenon.nvim` uses the width available. `:Zenon`
+never toggles off.
 
 ## What to expect
 
@@ -64,8 +75,7 @@ keep one selected buffer at the center of the whole Neovim screen.
 
 ## Configure
 
-The defaults are 50% width and at least 80 text columns, with no maximum. For
-example:
+To change the defaults:
 
 ```lua
 require("zenon").setup({
@@ -95,7 +105,7 @@ dependencies.
   `nvim-tree`.
   `zen-mode.nvim` opens one floating window. It closes when you enter a normal
   split.
-- `:Zenon 60` sets the width from the command line. `:ZenMode` has no width
+- `:Zenon 60` sets the percentage from the command line. `:ZenMode` has no width
   argument. You can set its width in the config or through Lua.
 - `zen-mode.nvim` can change terminal or GUI settings through its integrations.
   `zenon.nvim` leaves those settings alone. You can use hooks to change them yourself.

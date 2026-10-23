@@ -5,11 +5,12 @@ It has no required runtime dependencies.
 
 COMMANDS                                                     *zenon-commands*
 
-:Zenon [percentage [maximum [minimum]]]                              *:Zenon*
+:Zenon [percentage [minimum [maximum]]]                              *:Zenon*
     Enable or resize the current buffer. Repeating this command keeps it enabled.
-    Percentage refers to the host split, including its owned margins. Maximum
-    and minimum are text columns. If there is too little space, zenon.nvim uses the
-    available width.
+    Percentage refers to the host split, including its owned margins. Minimum
+    and maximum are text columns. For example, :Zenon 60 80 120 requests 60%,
+    with at least 80 and at most 120 text columns. If there is too little space,
+    zenon.nvim uses the available width.
     Omitted arguments keep the buffer's overrides or use setup defaults.
 
 :Zenoff                                                            *:Zenoff*

@@ -388,7 +388,7 @@ local function register()
     command(function(args)
       M.enable(config.command(args.fargs))
     end),
-    { nargs = "*", desc = "Enable or resize zenon.nvim: [percentage [maximum [minimum]]]" }
+    { nargs = "*", desc = "Enable or resize zenon.nvim: [percentage [minimum [maximum]]]" }
   )
   vim.api.nvim_create_user_command(
     "Zenoff",
