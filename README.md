@@ -86,21 +86,89 @@ keep one selected buffer at the center of the whole Neovim screen.
 
 ## Configure
 
-To change the defaults:
+Setup is optional. With `lazy.nvim` or `LazyVim`, put your changes in `opts`.
+With other package managers, pass them to `require("zenon").setup()`.
+You only need to include the options you want to change.
+
+These are the defaults, with a quick explanation of each option:
 
 ```lua
 require("zenon").setup({
-  width = 60,
+  -- Percentage uses the split and its margins, minus retained gutters.
+  width = 50,             -- Percentage, greater than 0 and at most 100.
   min_width = 80,
-  max_width = 120,
-  window_options = { spell = true },
+  max_width = nil,        -- Text columns; nil or false means no maximum.
+
+  -- Wrapping and movement change the display, not the file contents.
+  showbreak = "↪",       -- Marker on wrapped rows; false hides it.
+  scrolloff = 10,         -- Rows of context above and below the cursor.
+  breakindent = true,     -- Keep indentation on wrapped rows.
+  wrap = true,           -- Wrap long lines on screen.
+  linebreak = true,       -- Wrap at word boundaries.
+  wrap_navigation = true, -- Normal-mode j/k move by visible rows, with counts.
+
+  -- Appearance.
+  hide_eob = true,        -- Hide ~ markers after the end of the buffer.
+  dim = 0.15,             -- Darken margins: 0 to 1, or false to disable.
+  ruler = false,          -- Hide Neovim's global cursor-position ruler.
+  window_options = {
+    number = false,       -- Hide line numbers.
+    relativenumber = false,
+    signcolumn = "no",     -- Hide the sign column.
+    foldcolumn = "0",      -- Hide the fold column.
+    list = false,         -- Hide whitespace markers.
+    cursorline = false,   -- Hide cursor-line highlighting.
+    cursorcolumn = false, -- Hide cursor-column highlighting.
+  },
+
+  integrations = {
+    lualine = true,       -- Hide margin titles in an already loaded lualine.
+  },
+  hooks = {},            -- Optional callbacks, described below.
 })
 ```
 
-`zenon.nvim` also has options for wrapping, margin dimming, navigation, and an
-optional `lualine` adapter. It changes `ruler` while a buffer is enabled but
-leaves `showcmd` and statuslines alone. See [the help file](doc/zenon.txt) or
-`:help zenon` for all options, Lua hooks, and the margin contract.
+`min_width` and `max_width` count text columns. Both must be positive integers,
+and a maximum must be at least the minimum. Available space takes priority
+when a split is too narrow. `scrolloff` must be a nonnegative integer.
+
+`window_options` accepts any window-local Neovim option and overrides the
+corresponding display settings above. For example, use
+`window_options = { spell = true, number = true }` to enable spell checking
+and keep line numbers. Entries you omit keep their defaults. Window options
+are restored when leaving a view; buffer mappings are restored
+on disable. Later user changes are kept.
+
+Existing buffer-local `j`/`k` mappings take priority over `wrap_navigation`.
+Set it to `false` to keep your configured movement. `ruler` is global and is
+restored after the last enabled buffer is disabled; `showcmd` and statuslines
+stay as configured.
+
+The `lualine` adapter hides margin winbars and window statuslines while keeping
+file titles and the global statusline. It does not load `lualine` for you.
+Set `integrations = { lualine = false }` to turn it off. Registered custom
+adapters can also be enabled by name in this table.
+
+Use `hooks` for custom behavior:
+
+| Callback | When it runs |
+| --- | --- |
+| `on_enable = function(ctx) ... end` | Once per enabled buffer, after its views are created. May return a cleanup function that receives context when the session ends. |
+| `on_disable = function(ctx) ... end` | After the buffer's session resources are removed. |
+| `on_resize = function(ctx) ... end` | After a view is created or its geometry changes. |
+
+Each callback receives `ctx.bufnr`, `ctx.reason`, `ctx.session_count`, and
+`ctx.windows`. Each window entry has `winid`, `width`, and `available`.
+The window list can be empty for hidden buffers or after disable. Hooks can
+read state, but must not enable, disable, or reconfigure `zenon.nvim` inside
+a callback.
+
+For per-buffer overrides, use `require("zenon").enable({ width = 60 })`.
+Use `{ max_width = false }` to clear an inherited maximum. Runtime overrides
+take priority over setup defaults and are cleared on disable.
+
+See [the help file](doc/zenon.txt) or `:help zenon` for the full Lua API,
+custom adapter callbacks, and the margin contract.
 
 ## Development and license
 
