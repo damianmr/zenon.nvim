@@ -8,6 +8,19 @@ function M.set(win, key, value)
   vim.api.nvim_set_option_value(key, value, { win = win, scope = "local" })
 end
 
+function M.baseline(win, pending)
+  local saved = {}
+  for key, value in pairs(pending.saved) do
+    local current = M.get(win, key)
+    if pending.applied[key] ~= nil and current ~= pending.applied[key] then
+      saved[key] = current
+    else
+      saved[key] = value
+    end
+  end
+  return saved
+end
+
 function M.apply(view, options)
   view.saved = view.saved or {}
   view.applied = view.applied or {}

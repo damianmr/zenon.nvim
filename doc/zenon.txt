@@ -9,7 +9,7 @@ COMMANDS                                                     *zenon-commands*
     Enable or resize the current buffer. Repeating this command stays enabled.
     Percentage refers to the host split, including its owned margins. Maximum
     and minimum are text columns. Insufficient space wins over the minimum.
-    Omitted arguments retain the buffer's overrides or use setup defaults.
+    Omitted arguments keep the buffer's overrides or use setup defaults.
 
 :Zenoff                                                            *:Zenoff*
     Disable the current buffer and restore its views and mappings.
@@ -49,8 +49,8 @@ Setup is optional. Defaults: >lua
 See |'showbreak'|, |'scrolloff'|, |'breakindent'|, |'wrap'| and |'linebreak'|.
 
 showbreak marks a wrapped continuation row, not a newline in the file.
-Indented continuation rows inherit the indentation of the original file line.
-No spaces or newlines are inserted. Formatting and spell checking are preserved;
+Wrapped rows keep the original line's indentation. These settings only affect
+how text looks on screen. Formatting and spell checking stay as configured;
 window_options.spell=true can enable spell checking in zenon views.
 
 ruler is global and remains configured until the last enabled buffer is disabled
@@ -77,33 +77,32 @@ Set wrap_navigation=false to preserve configured j/k movement.
 
 LAYOUT AND SCOPE                                                 *zenon-layout*
 
-Enabled state follows the buffer. A buffer may have independently sized views in
-several windows or tabs. Splitting a view shares its whole pane, including margin
-space. Disabling leaves the resulting native splits in place.
-Changing to another buffer restores the outgoing view;
-returning to an enabled buffer recreates it. Focus changes do not disable it.
+Enable zenon for a buffer. It can have a view in several windows or tabs, each
+with its own width and saved options. Splitting a view shares the whole pane,
+including margins. Disabling keeps the resulting native splits. Changing buffers
+restores the outgoing view's options; returning creates its margins again.
+Focus changes keep the buffer enabled.
 
-The text stays in a native editing window. Unlisted scratch splits form empty
-margins. Other splits remain visible. Only the margins are dimmed, and transparent
-backgrounds remain transparent. Directional navigation skips margins. In enabled
-buffers Ctrl-W w, Ctrl-W Ctrl-W and Ctrl-W W cycle through editing windows, unless
-a buffer-local mapping already exists.
+The file stays in its native editing window. Blank scratch splits form the
+margins. Other splits stay visible. zenon dims the margins and keeps transparent
+backgrounds transparent. Directional navigation skips margins. In enabled
+buffers Ctrl-W w, Ctrl-W Ctrl-W and Ctrl-W W cycle through editing windows.
+Existing buffer mappings take priority.
 
 Margins have buftype=nofile, filetype=zenon-margin and w:zenon_padding=v:true.
 Third-party window pickers and :windo can see them; exclude those windows when
 appropriate. Tight widths may use one margin, and a one-column gap may make the
 text one column narrower than requested. Native window minimums also apply.
 
-The optional lualine adapter excludes margins from its winbars and per-window
-statuslines automatically, preventing [No Name] [-] titles. It uses an already
-loaded lualine instance and preserves file titles and the global statusline.
-It restores only exclusions still owned by zenon, preserving existing entries
-and later user changes. Set integrations.lualine=false to manage this yourself.
+The lualine adapter excludes margins from winbars and window statuslines to hide
+[No Name] [-] titles. It uses an already loaded lualine instance and keeps file
+titles and the global statusline. It restores exclusions that still match what
+zenon set and keeps existing entries and later user changes. Set
+integrations.lualine=false to manage this yourself.
 
-Changed options and installed mappings are restored only if they still match
-zenon's value, preserving later user changes. Global personal mappings remain in
-effect after local mappings are removed; remove global writing mappings if the
-behavior should apply only inside zenon.
+zenon restores options and mappings only if they still match what it set. It
+keeps later user changes. Global mappings still apply after disable. Remove
+global writing mappings if you want them only inside zenon.
 
 LUA AND HOOKS                                                      *zenon-api*
 
@@ -129,8 +128,8 @@ hooks.on_resize(ctx)
     Runs after a view is created or its geometry changes. Errors are reported.
 
 Context: bufnr, reason, session_count, windows. The window list may be empty for
-hidden buffers or after disable. Session count helps coordinate shared external
-state. Hooks may inspect state but must not call lifecycle functions recursively.
+hidden buffers or after disable. Use session_count for external state shared by
+buffers. Hooks can read state but must not change zenon's state inside a callback.
 
 Twilight is a separate plugin that dims inactive text regions. It is not loaded
 by zenon. Configure external integrations through hooks.
@@ -142,14 +141,14 @@ require("zenon").register_integration(name, spec)
     idempotent unregister() function that detaches and removes the adapter.
     Enable it with setup({ integrations = { [name] = true } }). Registration
     and configuration may occur in either order. Late registrations apply to
-    existing enabled buffers on the next scheduled reconciliation.
+    enabled buffers on the next scheduled update.
 
 An integration has these callbacks:
 
 available() -> boolean
     Optional. Check whether the other plugin is already available, for example
     through package.loaded. Omit this callback for an always-available adapter.
-    Availability is checked on enable and coalesced window lifecycle events.
+    zenon checks availability on enable and scheduled window events.
     zenon does not load the other plugin or poll for it.
 attach(ctx) -> state
     Required. Called once when at least one enabled buffer requests the adapter
@@ -158,24 +157,24 @@ attach(ctx) -> state
     needed by update and detach. If attach raises an error after changing
     external state, it must roll back those partial changes itself.
 update(ctx, state)
-    Optional. Called after layout reconciliation. Receives current windows and
+    Optional. Called after layout updates. Receives current windows and
     margins, including new and resized views, with the state returned by attach.
 detach(ctx, state)
     Optional. Restore owned state when no enabled buffer requests the adapter,
-    it becomes unavailable, or unregister() is called. Margins may already have
-    been destroyed. Preserve any later user changes to the other plugin.
+    it becomes unavailable, or unregister() is called. Margins may already be
+    gone. Keep later user changes to the other plugin.
 
-Context is a fresh snapshot for each callback:
+Each callback gets its own context snapshot:
     buffers: enabled buffer IDs, including hidden buffers.
     windows: { winid, bufnr, width, available } for visible editing views.
     margins: { winid, bufnr, owner, side } for margin windows. owner is the
              editing window ID; side is "left" or "right".
-Lists span all tabs and are sorted by buffer or window ID. Integration state is
-shared across buffers; any enabled buffer requesting an adapter keeps it active.
-Use per-buffer hooks for behavior that should run separately for each buffer.
+Lists cover all tabs and are sorted by buffer or window ID. Buffers share the
+adapter; any enabled buffer requesting it keeps it active. Use hooks for behavior
+that should run separately for each buffer.
 
-Callbacks must not call zenon lifecycle or registration functions recursively.
-Errors are reported without breaking editor cleanup or other integrations.
+Callbacks can read state but must not change zenon's state inside a callback.
+zenon reports errors and continues editor cleanup and other integrations.
 An update error detaches that adapter. After an availability, attach, or update
 error, the adapter is not retried until it is disabled and enabled again. A
 detach error is reported once and does not block cleanup of other resources.
@@ -197,12 +196,12 @@ Margins are ordinary split windows, visible to :windo, window pickers and window
 counts. Use the identifiers above to filter them. Two margins of one editing
 view may share a scratch buffer; buffer IDs do not identify individual windows.
 
-Window and buffer IDs are temporary and may change during resize, buffer
-replacement, or layout repair. Use the current context and check validity before
-asynchronous work. Do not edit margin buffers or move, close, or repurpose their
-windows. The filetype is assigned before margin windows exist, and native window
-creation autocommands are suppressed. Use update(ctx, state) for window changes.
-Implementation tables and highlight group names are private.
+Window and buffer IDs can change during resize, buffer replacement, or layout
+repair. Use IDs from the current context and check that they are valid before
+later work. Do not edit margin buffers or move, close, or reuse their windows.
+zenon sets their filetype before creating windows and suppresses native window
+creation autocommands. Use update(ctx, state) for window changes. Internal tables
+and highlight group names are private.
 
 DIAGNOSTICS                                                      *zenon-health*
 

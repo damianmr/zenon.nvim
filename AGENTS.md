@@ -1,97 +1,90 @@
 # Working on zenon
 
-zenon is a Neovim plugin for writing with a centered text area. The GitHub
-repository is `damianmr/zenon.nvim`; the Lua module and user-facing name are `zenon`.
+zenon centers text for writing in Neovim. The repository is
+`damianmr/zenon.nvim`; the Lua module and plugin name are `zenon`.
 
 ## Project context
 
-- Read `README.md` for supported behavior and configuration, and `DESIGN.md`
-  for the implemented architecture and verification approach.
-- Run `make test` for isolated headless Neovim integration tests. Run
-  `make check` with StyLua 2.6.0 for formatting.
-- Keep the README and help file aligned with working behavior.
-- `ideas/zen-mode.nvim/` is an optional, ignored reference checkout. It is not a
-  dependency or a submodule. The reviewed revision is
+- Read `README.md` for supported behavior and `DESIGN.md` for the layout and
+  cleanup design. Keep the README and help file consistent with the code.
+- Run `make test` for isolated headless tests and `make check` with StyLua 2.6.0.
+- `ideas/zen-mode.nvim/` is an ignored, optional reference, not a dependency or
+  submodule. The reviewed revision is
   `8564ce6d29ec7554eb9df578efa882d33b3c23a7` from
   `https://github.com/folke/zen-mode.nvim`.
 
-## Product constraints
+## Behavior
 
-- Implement zenon from the user's requirements with original code. Use
-  zen-mode only as a reference for behavior and editor option choices. Do not
-  copy, translate, or mechanically adapt its implementation.
-- Keep the core independent of tmux, terminal emulators, GUIs, and other plugins.
-  Put optional adapters behind the integration registry in
-  `lua/zenon/integrations/`; use public plugin APIs and do not force-load plugins.
-  Expose Lua lifecycle hooks for user-defined behavior.
-- Preserve the documented margin contract: `filetype=zenon-margin`,
-  `w:zenon_padding`, `is_margin()`, and integration context metadata. Document
-  contract changes in the help file and test custom integration lifecycle,
-  state restoration, and optional-plugin availability.
-- Preserve normal use of other splits, sidebars, and floating tools.
-- Leaving a window or losing application focus must not disable zen mode.
-- Support configuration and runtime width changes with a percentage, maximum,
-  and minimum, measured in screen columns. Specify edge cases before coding.
-- Preserve the user's buffer contents, undo history, cursor, and view.
-- Apply options with the narrowest appropriate scope. Restore changed state
-  on disable, buffer replacement, window close, and failed initialization.
-- Support LazyVim through lazy.nvim and native Neovim packages, including
-  `vim.pack` on Neovim 0.12. The minimum Neovim version is 0.12.
-- Use the command name `:Zenon`; Neovim user commands start with a capital
-  letter. `:Zenon` enables or resizes; `:Zenoff` disables. Do not turn
-  `:Zenon` into a toggle. Width percentages use the host split.
-- Writing mappings belong to enabled buffers. Preserve existing buffer-local
-  mappings and restore only mappings and options still owned by zenon.
+- Write original code from the user's requirements. Use zen-mode only to review
+  behavior and option choices. Do not copy, translate, or adapt its code.
+- Keep the core independent of tmux, terminals, GUIs, and other plugins. Put
+  optional adapters in `lua/zenon/integrations/`, use public plugin APIs, and
+  do not load external plugins. Keep Lua hooks for custom behavior.
+- Preserve the margin contract: `filetype=zenon-margin`, `w:zenon_padding`,
+  `is_margin()`, and integration context metadata. Document contract changes in
+  the help file. Test adapter cleanup, state restoration, and availability.
+- Keep other splits, sidebars, and floating tools usable. Focus changes must not
+  disable zenon. Enabled state belongs to the buffer.
+- Support percentage width with an optional maximum and a minimum in screen
+  columns. Use the host split, including margins. Define edge cases before coding.
+- Preserve buffer contents, undo history, cursor, and view. Use the narrowest
+  option scope. Restore owned state on disable, buffer replacement, window close,
+  and failed initialization. Keep later user changes.
+- Support Neovim 0.12+, lazy.nvim and LazyVim, and native packages with `vim.pack`.
+- `:Zenon` enables or resizes; it never toggles off. `:Zenoff` disables. Neovim
+  user commands must start with a capital letter.
+- Keep writing mappings local to enabled buffers. Preserve existing buffer
+  mappings and remove only mappings zenon still owns.
 
-## Implementation and review
+## Code and tests
 
-- Use Lua, the standard `lua/`, `plugin/`, and `doc/` layout, public Neovim APIs,
-  and no required runtime dependencies unless there is a concrete need.
-- Keep configuration, width calculation, rendering, and state cleanup separate.
-- Keep setup repeatable. Register namespaced autocommands and commands without
-  accumulating duplicate handlers. Clean up resources after errors.
-- Avoid polling and expensive cursor-event work. Coalesce layout updates and
-  prevent recursive resize handlers.
-- Validate input before changing editor state. Report invalid values clearly.
-- Test meaningful behavior: width boundaries, buffer and window lifecycle,
-  normal split navigation, restoration, and sidebar interactions. Use isolated
-  headless Neovim for automated checks and a real terminal for focus behavior.
-- Add help documentation and accurate installation examples with the first
-  usable implementation. Do not describe planned features as working features.
-- Do not commit local reference repositories, personal configuration, logs,
-  credentials, generated help tags, or build output.
-- Use official GitHub actions directly; use forks owned by `damianmr` for other
-  actions. Pin all actions to full commit SHAs, with an inline comment identifying
-  the upstream action and version.
+- Use Lua, public Neovim APIs, and the standard `lua/`, `plugin/`, and `doc/`
+  layout. Add runtime dependencies only for a concrete need.
+- Keep the code small. Share repeated behavior through simple helpers. Add a
+  layer only when it removes real duplication. Keep configuration, width
+  calculation, rendering, and cleanup separate.
+- Repeated setup must not add duplicate commands or autocommands. Clean up
+  resources after errors. Validate input before changing state and report errors
+  clearly.
+- Schedule one update for related layout events. Avoid polling, expensive cursor
+  handlers, and recursive resize loops.
+- Test width bounds, buffer and window lifecycles, navigation, restoration, and
+  sidebars. Wait for an expected result instead of sleeping for a fixed time.
+  Restore test fixtures even after failures. Prefer public behavior over private
+  implementation tables. Use a real terminal for focus and navigation checks.
+- Document working behavior and provide valid installation examples. Do not
+  describe planned features as available.
+- Do not commit local references, personal configuration, logs, credentials,
+  generated help tags, or build output.
+- Use official GitHub actions directly. Fork other actions into `damianmr`.
+  Pin every action to a full commit SHA and comment its upstream name and version.
 
 ## Releases
 
-- Publish versions intentionally through the manual `Release` workflow on
-  `main`. Routine commits do not require a release.
-- Use `vMAJOR.MINOR.PATCH` tags. Bump patch for fixes, minor for added features,
-  and major for breaking changes. Before 1.0, bump minor for breaking changes.
-- Require all CI checks to pass and tag the exact commit that was tested.
-  Use the workflow's dry run to check the process without publishing.
-- Never move, overwrite, or delete a published version tag or replace its
-  assets. Keep GitHub release immutability enabled; publish fixes as new versions.
-- Include user-facing changes and any upgrade steps in release notes, especially
-  changes to options, commands, defaults, or the minimum Neovim version.
+- Use the manual `Release` workflow on `main`. Routine commits need no release.
+- Use `vMAJOR.MINOR.PATCH`. Bump patch for fixes, minor for features, and major
+  for breaking changes. Before 1.0, bump minor for breaking changes.
+- Require CI to pass and tag the exact tested commit. Use the workflow's dry run
+  to check the process without publishing.
+- Never change a published tag or replace release assets. Keep GitHub release
+  immutability enabled. Publish a new version for fixes.
+- Describe changes users will notice and list upgrade steps in release notes,
+  especially for options, commands, defaults, or the minimum Neovim version.
 - Once a release exists, pin installation examples to a published tag and keep
-  them current. Never document a nonexistent tag as an installable release.
+  them current. Never use a tag that does not exist.
 
-## Licensing
+## License
 
-The owner selected MIT; see `LICENSE`. The implementation must remain original.
-Keep the reference checkout outside the published tree. Preserve applicable
-notices for any separately approved third-party material introduced later.
+The owner chose MIT; see `LICENSE`. Keep the implementation original and reference
+checkouts out of the published tree. Preserve required notices for any separately
+approved third-party code.
 
 ## Communication and GitHub
 
-Use clear, natural English with simple words and correct grammar. Avoid
-flowery language, idioms, slang, and overly formal wording.
+Use clear, simple English with correct grammar, as a fluent non-native speaker
+would write it. Avoid flowery language, idioms, slang, and formal wording.
 
-`GH_TOKEN` is available for authenticated GitHub CLI operations. Never print or
-commit it. The user permits GitHub actions, including destructive actions;
-still keep changes within the requested task. Use the repository's existing
-history and verify the remote before pushing. Do not force-push for routine
-synchronization.
+`GH_TOKEN` is available for GitHub CLI operations. Never print or commit it.
+The user permits GitHub actions, including destructive actions. Stay within the
+task, use existing history, and verify the remote before pushing. Do not
+force-push for routine synchronization.

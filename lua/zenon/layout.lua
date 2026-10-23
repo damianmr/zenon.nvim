@@ -1,6 +1,24 @@
 local config = require("zenon.config")
 local options = require("zenon.options")
 local M = { padding = {}, last = nil }
+local sides = { "left", "right" }
+local margin_options = {
+  number = false,
+  relativenumber = false,
+  signcolumn = "no",
+  foldcolumn = "0",
+  statuscolumn = "",
+  cursorline = false,
+  cursorcolumn = false,
+  list = false,
+  spell = false,
+  wrap = false,
+  winbar = "",
+  statusline = " ",
+  winfixbuf = true,
+  fillchars = "eob: ,vert: ,horiz: ,horizup: ,horizdown: ,vertleft: ,vertright: ,verthoriz: ",
+  winhighlight = "",
+}
 
 local function valid(win)
   return win and vim.api.nvim_win_is_valid(win)
@@ -82,30 +100,12 @@ local function pad(view, side, width)
   M.padding[win] = { owner = view.win, side = side }
   view[side] = win
   vim.w[win].zenon_padding = true
-  local values = {
-    number = false,
-    relativenumber = false,
-    signcolumn = "no",
-    foldcolumn = "0",
-    statuscolumn = "",
-    cursorline = false,
-    cursorcolumn = false,
-    list = false,
-    spell = false,
-    wrap = false,
-    winbar = "",
-    statusline = " ",
-    winfixbuf = true,
-    fillchars = "eob: ,vert: ,horiz: ,horizup: ,horizdown: ,vertleft: ,vertright: ,verthoriz: ",
-    winhighlight = ("Normal:%s,NormalNC:%s,EndOfBuffer:%s,WinSeparator:%s,StatusLine:%s,StatusLineNC:%s"):format(
-      view.highlight,
-      view.highlight,
-      view.highlight,
-      view.highlight,
-      view.highlight,
-      view.highlight
+  local values = vim.tbl_extend("force", margin_options, {
+    winhighlight = ("Normal,NormalNC,EndOfBuffer,WinSeparator,StatusLine,StatusLineNC"):gsub(
+      "[^,]+",
+      "%0:" .. view.highlight
     ),
-  }
+  })
   for key, value in pairs(values) do
     options.set(win, key, value)
   end
@@ -130,7 +130,7 @@ function M.width(view)
     return 0
   end
   local total = vim.api.nvim_win_get_width(view.win)
-  for _, side in ipairs({ "left", "right" }) do
+  for _, side in ipairs(sides) do
     if valid(view[side]) then
       total = total + vim.api.nvim_win_get_width(view[side]) + 1
     end
@@ -159,33 +159,28 @@ function M.resize(view, opts)
     elseif spare > 0 then
       right = math.max(1, spare - 1)
     end
-    if left == 0 then
-      close_pad(view, "left")
-    end
-    if right == 0 then
-      close_pad(view, "right")
-    end
-    if left > 0 and not valid(view.left) then
-      pad(view, "left", 1)
-    end
-    if right > 0 and not valid(view.right) then
-      pad(view, "right", 1)
-    end
-    local left_width = valid(view.left) and vim.api.nvim_win_get_width(view.left) or 0
-    local right_width = valid(view.right) and vim.api.nvim_win_get_width(view.right) or 0
-    if left_width ~= left or right_width ~= right then
-      -- Give the text room before growing either margin.
-      if valid(view.left) then
-        vim.api.nvim_win_set_width(view.left, 1)
+    local widths, resize = { left = left, right = right }, false
+    for _, side in ipairs(sides) do
+      if widths[side] == 0 then
+        close_pad(view, side)
+      elseif not valid(view[side]) then
+        pad(view, side, 1)
       end
-      if valid(view.right) then
-        vim.api.nvim_win_set_width(view.right, 1)
+      if valid(view[side]) and vim.api.nvim_win_get_width(view[side]) ~= widths[side] then
+        resize = true
       end
-      if left > 0 then
-        vim.api.nvim_win_set_width(view.left, left)
+    end
+    if resize then
+      -- Shrink both margins before growing either one.
+      for _, side in ipairs(sides) do
+        if valid(view[side]) then
+          vim.api.nvim_win_set_width(view[side], 1)
+        end
       end
-      if right > 0 then
-        vim.api.nvim_win_set_width(view.right, right)
+      for _, side in ipairs(sides) do
+        if widths[side] > 0 then
+          vim.api.nvim_win_set_width(view[side], widths[side])
+        end
       end
     end
     local width = vim.api.nvim_win_get_width(view.win) - gutters(view.win)
@@ -203,23 +198,7 @@ function M.create(win, opts, baseline)
     highlight = "ZenonMargin" .. win,
   }
   view.recovery = {}
-  for _, key in ipairs({
-    "number",
-    "relativenumber",
-    "signcolumn",
-    "foldcolumn",
-    "statuscolumn",
-    "cursorline",
-    "cursorcolumn",
-    "list",
-    "spell",
-    "wrap",
-    "winbar",
-    "statusline",
-    "winfixbuf",
-    "fillchars",
-    "winhighlight",
-  }) do
+  for key in pairs(margin_options) do
     view.recovery[key] = options.get(win, key)
   end
   local ok, failure = xpcall(function()
@@ -239,11 +218,29 @@ function M.create(win, opts, baseline)
   return view
 end
 
-function M.recover(view, win)
-  for key, value in pairs(view.recovery) do
-    options.set(win, key, value)
+-- :close can leave a tab with only margins. Reuse one to keep the file visible.
+function M.recover(view)
+  if valid(view.win) or not vim.api.nvim_buf_is_valid(view.buf) then
+    return
   end
-  vim.w[win].zenon_padding = nil
+  for _, side in ipairs(sides) do
+    local win = view[side]
+    if valid(win) then
+      local tab = vim.api.nvim_win_get_tabpage(win)
+      if vim.iter(vim.api.nvim_tabpage_list_wins(tab)):any(M.real) then
+        return
+      end
+      M.padding[win], view[side] = nil, nil
+      for key, value in pairs(view.recovery) do
+        options.set(win, key, value)
+      end
+      vim.w[win].zenon_padding = nil
+      options.set(win, "winfixbuf", false)
+      vim.api.nvim_win_set_buf(win, view.buf)
+      options.set(win, "winfixbuf", view.recovery.winfixbuf)
+      return win
+    end
+  end
 end
 
 function M.destroy(view)
@@ -266,7 +263,7 @@ function M.contiguous(view)
   end
   local position = vim.api.nvim_win_get_position(view.win)
   local height = vim.api.nvim_win_get_height(view.win)
-  for _, side in ipairs({ "left", "right" }) do
+  for _, side in ipairs(sides) do
     local win = view[side]
     if valid(win) then
       local other = vim.api.nvim_win_get_position(win)
@@ -284,8 +281,7 @@ function M.contiguous(view)
   return true
 end
 
--- Native margins remain ordinary split windows. Skip them synchronously so
--- directional navigation, including external navigator plugins, sees real windows.
+-- Skip margins during WinEnter so external navigators reach editing windows.
 function M.enter()
   local current = vim.api.nvim_get_current_win()
   local margin = M.padding[current]

@@ -1,5 +1,5 @@
 local M = {}
-local registered, active, failed = {}, {}, {}
+local registered = {}
 
 ---@class zenon.IntegrationView
 ---@field winid integer Editing window ID.
@@ -24,21 +24,27 @@ local registered, active, failed = {}, {}, {}
 ---@field update? fun(ctx: zenon.IntegrationContext, state: any) Update after layout changes.
 ---@field detach? fun(ctx: zenon.IntegrationContext, state: any) Restore owned state.
 
-local function report(name, phase, message)
-  vim.notify(
-    ("zenon: integration '%s' failed to %s: %s"):format(name, phase, tostring(message)),
-    vim.log.levels.WARN
-  )
+local function call(entry, method, ...)
+  local callback = entry.spec[method]
+  if not callback then
+    return true, true
+  end
+  local ok, result = pcall(callback, ...)
+  if not ok then
+    local phase = method == "available" and "check availability" or method
+    vim.notify(
+      ("zenon: integration '%s' failed to %s: %s"):format(entry.name, phase, tostring(result)),
+      vim.log.levels.WARN
+    )
+  end
+  return ok, result
 end
 
-local function detach(name, ctx)
-  local entry = active[name]
-  active[name] = nil
-  if entry and entry.spec.detach then
-    local ok, message = pcall(entry.spec.detach, vim.deepcopy(ctx), entry.state)
-    if not ok then
-      report(name, "detach", message)
-    end
+local function detach(entry, ctx)
+  if entry.active then
+    entry.active = false
+    call(entry, "detach", vim.deepcopy(ctx), entry.state)
+    entry.state = nil
   end
 end
 
@@ -60,40 +66,34 @@ function M.register(name, spec)
       error("zenon: integration callback '" .. key .. "' must be a function", 0)
     end
   end
-  spec = vim.tbl_extend("force", {}, spec)
-  registered[name] = spec
+  local entry = { name = name, spec = vim.tbl_extend("force", {}, spec) }
+  registered[name] = entry
   return function(ctx)
-    if registered[name] == spec then
+    if registered[name] == entry then
       registered[name] = nil
-      detach(name, ctx)
-      failed[name] = nil
+      detach(entry, ctx)
     end
   end
 end
 
 function M.reconcile(requested, ctx)
-  for _, name in ipairs(vim.tbl_keys(registered)) do
-    local spec = registered[name]
+  for name, entry in pairs(registered) do
     if not requested[name] then
-      detach(name, ctx)
-      failed[name] = nil
-    elseif not failed[name] then
-      local ok, available = pcall(function()
-        return not spec.available or spec.available()
-      end)
+      detach(entry, ctx)
+      entry.failed = nil
+    elseif not entry.failed then
+      local ok, available = call(entry, "available")
       if not ok then
-        failed[name] = true
-        report(name, "check availability", available)
-        detach(name, ctx)
+        entry.failed = true
+        detach(entry, ctx)
       elseif not available then
-        detach(name, ctx)
-      elseif not active[name] then
-        local attached, state = pcall(spec.attach, vim.deepcopy(ctx))
+        detach(entry, ctx)
+      elseif not entry.active then
+        local attached, state = call(entry, "attach", vim.deepcopy(ctx))
         if attached then
-          active[name] = { spec = spec, state = state }
+          entry.active, entry.state = true, state
         else
-          failed[name] = true
-          report(name, "attach", state)
+          entry.failed = true
         end
       end
     end
@@ -101,14 +101,12 @@ function M.reconcile(requested, ctx)
 end
 
 function M.update(ctx)
-  for _, name in ipairs(vim.tbl_keys(active)) do
-    local entry = active[name]
-    if entry.spec.update then
-      local ok, message = pcall(entry.spec.update, vim.deepcopy(ctx), entry.state)
+  for _, entry in pairs(registered) do
+    if entry.active and entry.spec.update then
+      local ok = call(entry, "update", vim.deepcopy(ctx), entry.state)
       if not ok then
-        failed[name] = true
-        report(name, "update", message)
-        detach(name, ctx)
+        entry.failed = true
+        detach(entry, ctx)
       end
     end
   end

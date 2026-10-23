@@ -13,8 +13,8 @@ function M.before(view, baseline)
     available = view and layout.width(view),
     baseline = inherited and {
       buf = vim.api.nvim_win_get_buf(win),
-      saved = vim.deepcopy(inherited.saved),
-      applied = vim.deepcopy(inherited.applied),
+      saved = inherited.saved,
+      applied = inherited.applied,
     },
     group = members[win],
     width = vim.api.nvim_win_get_width(win),
@@ -39,10 +39,11 @@ function M.after(win)
     local old_position = vim.api.nvim_win_get_position(source)
     local width = vim.api.nvim_win_get_width(win)
     local old_width = vim.api.nvim_win_get_width(source)
-    local vertical = position[1] == before.position[1]
-      and old_position[1] == before.position[1]
-      and math.min(position[2], old_position[2]) == before.position[2]
-      and old_width + width + 1 == before.width
+    local vertical = position[1] == old_position[1]
+      and (
+        position[2] + width + 1 == old_position[2]
+        or old_position[2] + old_width + 1 == position[2]
+      )
     local horizontal = position[2] == before.position[2]
       and old_position[2] == before.position[2]
       and position[1] ~= old_position[1]
@@ -56,7 +57,8 @@ function M.after(win)
       end
       local target = group.targets[source]
       if vertical then
-        local extra = target - before.width
+        -- Automatic equalization may resize the margins during the native split.
+        local extra = target - old_width - width - 1
         local share = math.floor(extra / 2)
         if old_width < width then
           share = math.ceil(extra / 2)
