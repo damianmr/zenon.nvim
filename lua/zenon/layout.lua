@@ -24,8 +24,12 @@ local function valid(win)
   return win and vim.api.nvim_win_is_valid(win)
 end
 
+local function normal_window(win)
+  return valid(win) and vim.api.nvim_win_get_config(win).relative == ""
+end
+
 function M.real(win)
-  return valid(win) and not M.padding[win] and vim.api.nvim_win_get_config(win).relative == ""
+  return normal_window(win) and not M.padding[win]
 end
 
 -- Layout changes must not make Neovim equalize unrelated splits.
@@ -35,7 +39,7 @@ local function transaction(callback, owner)
   local owners = type(owner) == "table" and owner or { [owner] = true }
   vim.o.equalalways = false
   for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if vim.api.nvim_win_get_config(win).relative == "" then
+    if normal_window(win) then
       fixed[win] = options.get(win, "winfixwidth")
       fixed_height[win] = options.get(win, "winfixheight")
       local margin = M.padding[win]
@@ -45,7 +49,7 @@ local function transaction(callback, owner)
   local ok, result = xpcall(callback, debug.traceback)
   local normal = {}
   for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if vim.api.nvim_win_get_config(win).relative == "" then
+    if normal_window(win) then
       normal[#normal + 1] = win
       options.set(win, "winfixwidth", true)
       options.set(win, "winfixheight", true)

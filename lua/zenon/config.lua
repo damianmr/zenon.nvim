@@ -134,10 +134,7 @@ end
 
 function M.columns(available, options)
   local desired = math.floor(available * options.width / 100)
-  return math.max(
-    1,
-    math.min(available, options.max_width or available, math.max(options.min_width, desired))
-  )
+  return math.min(available, options.max_width or available, math.max(options.min_width, desired))
 end
 
 return M

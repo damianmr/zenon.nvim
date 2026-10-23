@@ -1,14 +1,15 @@
 *zenon.txt*                  Buffer writing mode                         *zenon*
 
-zenon requires Neovim 0.12 or newer. Its implementation is original and MIT
-licensed. It has no required runtime dependencies.
+zenon requires Neovim 0.12 or newer. Its Lua code is original and MIT licensed.
+It has no required runtime dependencies.
 
 COMMANDS                                                     *zenon-commands*
 
 :Zenon [percentage [maximum [minimum]]]                              *:Zenon*
-    Enable or resize the current buffer. Repeating this command stays enabled.
+    Enable or resize the current buffer. Repeating this command keeps it enabled.
     Percentage refers to the host split, including its owned margins. Maximum
-    and minimum are text columns. Insufficient space wins over the minimum.
+    and minimum are text columns. If there is too little space, zenon uses the
+    available width.
     Omitted arguments keep the buffer's overrides or use setup defaults.
 
 :Zenoff                                                            *:Zenoff*
@@ -48,13 +49,15 @@ Setup is optional. Defaults: >lua
 <
 See |'showbreak'|, |'scrolloff'|, |'breakindent'|, |'wrap'| and |'linebreak'|.
 
-showbreak marks a wrapped continuation row, not a newline in the file.
-Wrapped rows keep the original line's indentation. These settings only affect
-how text looks on screen. Formatting and spell checking stay as configured;
+showbreak marks a wrapped continuation row. It does not add a newline to the
+file. Wrapped rows keep the original line's indentation. These settings change
+the display. Formatting and spell checking stay as configured;
 window_options.spell=true can enable spell checking in zenon views.
 
-ruler is global and remains configured until the last enabled buffer is disabled
-or wiped. showcmd, statuslines, and other global UI settings are preserved.
+ruler is global. If enabled buffers request different values, false takes
+priority. After the last enabled buffer is disabled or wiped, zenon restores
+the old value if it still matches what zenon set. showcmd, statuslines, and
+other global UI settings stay as configured.
 
 Omit max_width for no maximum beyond the available space. Use
 require("zenon").enable({ max_width = false }) to remove a maximum inherited
@@ -65,6 +68,30 @@ integer. When set, max_width must be a positive integer at least min_width;
 false also means no maximum. scrolloff must be a nonnegative integer. Unknown
 options are rejected. window_options accepts only window-local Neovim options.
 setup replaces setup defaults; runtime buffer overrides still take priority.
+zenon checks options before changing state. If setup or enable fails, zenon
+restores the old session or removes the new one.
+
+WIDTH AND SPLITS                                                   *zenon-width*
+
+The host region is the editing window plus its margins and separators. Width
+percentages use the host region after subtracting retained gutters, such as
+line numbers. min_width and max_width count text columns after those gutters.
+zenon calculates the target width as follows: >text
+    text_space = max(1, host_columns - retained_gutters)
+    desired = floor(text_space * width / 100)
+    target = min(text_space, max_width or text_space,
+                 max(min_width, desired))
+<
+An omitted or false max_width means no cap. Available space takes priority over
+min_width. Neovim's window minimums and separators still apply. Small gaps use
+one margin; with only one spare column, text can be one column narrower than the
+target.
+
+zenon updates layout after window and terminal size changes. A vertical split
+shares the old host region, including margin space. A horizontal split keeps the
+full host width. Existing sidebars keep their size. Later manual resizes also
+stay in place. zenon groups related window events into one update. It leaves
+margins alone when they already have the requested width.
 
 NAVIGATION                                                   *zenon-navigation*
 
@@ -83,16 +110,16 @@ including margins. Disabling keeps the resulting native splits. Changing buffers
 restores the outgoing view's options; returning creates its margins again.
 Focus changes keep the buffer enabled.
 
-The file stays in its native editing window. Blank scratch splits form the
-margins. Other splits stay visible. zenon dims the margins and keeps transparent
-backgrounds transparent. Directional navigation skips margins. In enabled
-buffers Ctrl-W w, Ctrl-W Ctrl-W and Ctrl-W W cycle through editing windows.
+The file stays in its editing window. Blank scratch splits form the margins.
+Other splits stay visible. zenon dims the margins and keeps transparent
+backgrounds transparent. Margin colors follow the colorscheme. Directional
+navigation skips margins. In enabled buffers Ctrl-W w, Ctrl-W Ctrl-W and
+Ctrl-W W cycle through editing windows.
 Existing buffer mappings take priority.
 
 Margins have buftype=nofile, filetype=zenon-margin and w:zenon_padding=v:true.
-Third-party window pickers and :windo can see them; exclude those windows when
-appropriate. Tight widths may use one margin, and a one-column gap may make the
-text one column narrower than requested. Native window minimums also apply.
+Window pickers and :windo can see them. Exclude margins from those tools when
+needed.
 
 The lualine adapter excludes margins from winbars and window statuslines to hide
 [No Name] [-] titles. It uses an already loaded lualine instance and keeps file
@@ -103,6 +130,11 @@ integrations.lualine=false to manage this yourself.
 zenon restores options and mappings only if they still match what it set. It
 keeps later user changes. Global mappings still apply after disable. Remove
 global writing mappings if you want them only inside zenon.
+
+Saved local option values include inherited values. Replacing the buffer in a
+window restores that window's options; returning to an enabled buffer creates a
+new view. Before quitting a view, zenon removes its margins. If closing the last
+editing window leaves only margins, zenon reuses one for the file.
 
 LUA AND HOOKS                                                      *zenon-api*
 
@@ -140,7 +172,7 @@ require("zenon").register_integration(name, spec)
     Register an adapter. Names must be unique nonempty strings. Returns an
     idempotent unregister() function that detaches and removes the adapter.
     Enable it with setup({ integrations = { [name] = true } }). Registration
-    and configuration may occur in either order. Late registrations apply to
+    and configuration can occur in either order. Late registrations apply to
     enabled buffers on the next scheduled update.
 
 An integration has these callbacks:
@@ -164,7 +196,7 @@ detach(ctx, state)
     it becomes unavailable, or unregister() is called. Margins may already be
     gone. Keep later user changes to the other plugin.
 
-Each callback gets its own context snapshot:
+Each callback gets a separate context snapshot:
     buffers: enabled buffer IDs, including hidden buffers.
     windows: { winid, bufnr, width, available } for visible editing views.
     margins: { winid, bufnr, owner, side } for margin windows. owner is the
@@ -192,7 +224,7 @@ The following identifiers are available to external integrations:
     filetype=zenon-margin on margin scratch buffers
     buftype=nofile, buflisted=false, modifiable=false, swapfile=false
 
-Margins are ordinary split windows, visible to :windo, window pickers and window
+Margins are split windows, visible to :windo, window pickers and window
 counts. Use the identifiers above to filter them. Two margins of one editing
 view may share a scratch buffer; buffer IDs do not identify individual windows.
 

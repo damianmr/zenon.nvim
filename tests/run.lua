@@ -26,17 +26,14 @@ local function eq(expected, actual, message)
 end
 
 local function wait_for(predicate, message)
-  assert(vim.wait(1000, predicate, 1), message or "timed out waiting for scheduled work")
+  assert(vim.wait(3000, predicate, 10), message or "timed out waiting for scheduled work")
 end
 
 local function flush(predicate, message)
   local ready = false
   vim.cmd("redraw")
   vim.schedule(function()
-    vim.cmd("redraw")
-    vim.schedule(function()
-      ready = true
-    end)
+    ready = true
   end)
   wait_for(function()
     return ready and (not predicate or predicate())
@@ -121,16 +118,25 @@ end
 -- duplicating zenon's width calculation in the expected result.
 local function native_widths(commands)
   local wins = { api.nvim_get_current_win() }
-  for _, command in ipairs(commands) do
-    vim.cmd(command)
-    wins[#wins + 1] = api.nvim_get_current_win()
-  end
-  local widths = vim.tbl_map(api.nvim_win_get_width, wins)
+  local ok, result = xpcall(function()
+    for _, command in ipairs(commands) do
+      vim.cmd(command)
+      wins[#wins + 1] = api.nvim_get_current_win()
+    end
+    return vim.tbl_map(api.nvim_win_get_width, wins)
+  end, debug.traceback)
   for index = #wins, 2, -1 do
-    api.nvim_win_close(wins[index], true)
+    if api.nvim_win_is_valid(wins[index]) then
+      api.nvim_win_close(wins[index], true)
+    end
   end
-  api.nvim_set_current_win(wins[1])
-  return widths
+  if api.nvim_win_is_valid(wins[1]) then
+    api.nvim_set_current_win(wins[1])
+  end
+  if not ok then
+    error(result, 0)
+  end
+  return result
 end
 
 local function host_widths(buf)
@@ -152,7 +158,7 @@ local function check_margins(view)
   local position = api.nvim_win_get_position(view.winid)
   local width = api.nvim_win_get_width(view.winid)
   local left, right
-  for _, win in ipairs(api.nvim_list_wins()) do
+  for _, win in ipairs(api.nvim_tabpage_list_wins(api.nvim_win_get_tabpage(view.winid))) do
     local other = api.nvim_win_get_position(win)
     if zenon.is_margin(win) and other[1] == position[1] then
       if other[2] + api.nvim_win_get_width(win) + 1 == position[2] then
@@ -323,7 +329,7 @@ test("one enabled buffer can have two independent views", function()
   local buf = api.nvim_get_current_buf()
   zenon.enable()
   vim.cmd("vsplit")
-  flush()
+  wait_views(2, buf)
   eq(2, #real_windows())
   eq(2, #zenon.status(buf).windows)
   for _, view in ipairs(zenon.status(buf).windows) do
@@ -685,7 +691,7 @@ test("closing a host cleans its margins without disabling another buffer", funct
   local buf = api.nvim_get_current_buf()
   zenon.enable()
   vim.cmd("close")
-  flush()
+  wait_views(0, buf)
   eq(1, #api.nvim_list_wins())
   eq(true, zenon.is_enabled(buf))
   eq(0, #zenon.status(buf).windows)
@@ -762,9 +768,10 @@ test("setup validates buffer overrides before changing active views", function()
 end)
 
 test("closing the last editing window never leaves only scratch margins", function()
+  local buf = api.nvim_get_current_buf()
   zenon.enable()
   vim.cmd("close")
-  flush()
+  wait_views(1, buf)
   eq(1, #real_windows())
   eq(true, zenon.is_enabled())
   zenon.disable()
@@ -798,9 +805,11 @@ test("buffer wipe releases the session and global options", function()
   local buf = api.nvim_get_current_buf()
   zenon.enable()
   vim.cmd("enew")
-  flush()
+  wait_views(0, buf)
   api.nvim_buf_delete(buf, { force = true })
-  flush()
+  flush(function()
+    return not zenon.is_enabled(buf)
+  end)
   eq(false, zenon.is_enabled(buf))
   eq(true, vim.o.ruler)
   eq(1, #api.nvim_list_wins())
@@ -856,7 +865,9 @@ test("a new unrelated split does not inherit the source writing profile", functi
   vim.cmd("vnew")
   local other = api.nvim_get_current_win()
   vim.wo.scrolloff = 24
-  flush()
+  flush(function()
+    return not vim.wo[other].wrap and vim.wo[other].scrolloff == 24
+  end)
   eq(false, zenon.is_enabled())
   eq(true, zenon.is_enabled(original))
   eq(false, vim.wo[other].wrap)
@@ -868,10 +879,9 @@ test("one buffer retains independent zen views across tabs", function()
   local buf = api.nvim_get_current_buf()
   zenon.enable()
   vim.cmd("tab split")
-  flush()
+  wait_views(2, buf)
   eq(2, #zenon.status(buf).windows)
   vim.cmd("tabprevious")
-  flush()
   eq(true, zenon.is_enabled())
   zenon.disable(buf)
   eq(2, #api.nvim_list_wins())
@@ -886,7 +896,9 @@ test("shrinking below the minimum removes margins but retains enabled state", fu
   local width = vim.o.columns
   vim.o.columns = 60
   api.nvim_exec_autocmds("VimResized", {})
-  flush()
+  flush(function()
+    return #api.nvim_list_wins() == 1 and api.nvim_win_get_width(0) == 60
+  end)
   local small = {
     enabled = zenon.is_enabled(),
     width = api.nvim_win_get_width(0),
@@ -894,7 +906,9 @@ test("shrinking below the minimum removes margins but retains enabled state", fu
   }
   vim.o.columns = width
   api.nvim_exec_autocmds("VimResized", {})
-  flush()
+  flush(function()
+    return api.nvim_win_get_width(0) == math.floor(width / 2)
+  end)
   eq(true, small.enabled)
   eq(60, small.width)
   eq(1, small.windows)
@@ -977,7 +991,9 @@ test("integrations can register late and unregister while buffers stay enabled",
   eq(0, attached)
   ready = true
   api.nvim_exec_autocmds("WinEnter", {})
-  flush()
+  flush(function()
+    return attached == 1
+  end)
   eq(1, attached)
   unregister()
   unregister()
@@ -1054,7 +1070,9 @@ test("integration failures clean up once without breaking editing", function()
   })
   zenon.enable()
   api.nvim_exec_autocmds("WinEnter", {})
-  flush()
+  flush(function()
+    return detached == 1
+  end)
   eq(1, updates)
   eq(1, detached)
   eq(2, #notifications)
@@ -1147,7 +1165,12 @@ test("lualine reconfiguration restores its new baseline after disable", function
     changed.options.disabled_filetypes = { statusline = { "new" }, winbar = {} }
     lualine.setup(changed)
     api.nvim_exec_autocmds("WinEnter", {})
-    flush()
+    flush(function()
+      return vim.deep_equal(
+        { "new", "zenon-margin" },
+        lualine.get_config().options.disabled_filetypes.statusline
+      )
+    end)
     eq({ "new", "zenon-margin" }, lualine.get_config().options.disabled_filetypes.statusline)
     zenon.disable()
     eq(changed, lualine.get_config())
@@ -1174,7 +1197,14 @@ test("lualine stays unloaded and can attach later without leaving margin bars", 
     end
     package.loaded.lualine = lualine
     api.nvim_exec_autocmds("WinEnter", {})
-    flush()
+    flush(function()
+      for _, win in ipairs(api.nvim_list_wins()) do
+        if zenon.is_margin(win) and vim.wo[win].winbar ~= "" then
+          return false
+        end
+      end
+      return true
+    end)
     eq(0, loads)
     eq("file title", vim.wo[host].winbar)
     for _, win in ipairs(api.nvim_list_wins()) do
