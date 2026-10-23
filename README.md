@@ -5,6 +5,12 @@ text at a comfortable width and lets you move through wrapped lines as they
 appear on screen. Enable it for a buffer, then open other files, splits, or a
 sidebar. That buffer stays in zen mode when you return.
 
+The same dummy note in a 120-column Neovim window:
+
+| Without `zenon.nvim` | With `zenon.nvim` |
+| --- | --- |
+| ![Wide, unwrapped note](images/without-zenon.png) | ![Centered note with wrapped lines](images/with-zenon.png) |
+
 ## Install
 
 Requires Neovim 0.12 or newer.
