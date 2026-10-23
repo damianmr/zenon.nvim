@@ -245,6 +245,8 @@ test("command arguments are percentage, minimum, maximum", function()
   eq(90, api.nvim_win_get_width(0))
   vim.cmd("Zenon 60 80 120")
   eq(120, api.nvim_win_get_width(0))
+  vim.cmd("Zenon 100 80")
+  eq(120, api.nvim_win_get_width(0), "omitting the maximum keeps its last value")
 end)
 
 test("a maximum below the command minimum leaves the buffer unchanged", function()

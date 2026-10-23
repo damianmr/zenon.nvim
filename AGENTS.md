@@ -29,7 +29,7 @@ the commands, and the margin identifiers unchanged.
   the help file. Test adapter cleanup, state restoration, and availability.
 - Keep other splits, sidebars, and floating tools usable. Focus changes must not
   disable zenon.nvim. Enabled state belongs to the buffer.
-- Support percentage width with an optional minimum and maximum in screen
+- Support percentage width with an optional minimum and maximum in text
   columns. The command order is percentage, minimum, maximum. Use the host split,
   including margins. Define edge cases before coding.
 - Preserve buffer contents, undo history, cursor, and view. Use the narrowest
