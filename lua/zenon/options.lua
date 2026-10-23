@@ -24,6 +24,7 @@ end
 function M.apply(view, options)
   view.saved = view.saved or {}
   view.applied = view.applied or {}
+  view.requested = view.requested or {}
   local values = vim.tbl_extend("force", {
     wrap = options.wrap,
     linebreak = options.linebreak,
@@ -31,27 +32,52 @@ function M.apply(view, options)
     showbreak = options.showbreak or "",
     scrolloff = options.scrolloff,
   }, options.window_options)
+  local fillchars = values.fillchars
+  values.fillchars = nil
   for key, value in pairs(values) do
-    if view.saved[key] == nil then
-      view.saved[key] = M.get(view.win, key)
+    local current = M.get(view.win, key)
+    if
+      view.saved[key] == nil
+      or (view.requested[key] ~= nil and (view.applied[key] == nil or current ~= view.applied[key]))
+    then
+      view.saved[key] = current
+      view.applied[key] = nil
     end
-    M.set(view.win, key, value)
-    view.applied[key] = M.get(view.win, key)
+    if view.requested[key] ~= value then
+      M.set(view.win, key, value)
+      view.applied[key] = M.get(view.win, key)
+    end
+    view.requested[key] = value
   end
-  if options.hide_eob then
-    if view.saved.fillchars == nil then
-      view.saved.fillchars = M.get(view.win, "fillchars")
+  local profile = tostring(options.hide_eob) .. "\0" .. (fillchars or "")
+  local current = M.get(view.win, "fillchars")
+  local applied = view.applied.fillchars
+  if applied ~= nil and current ~= applied then
+    view.saved.fillchars = current
+    view.applied.fillchars = nil
+  elseif applied == nil and view.saved.fillchars ~= nil and view.fillchars_request ~= nil then
+    view.saved.fillchars = current
+  end
+  if options.hide_eob or fillchars ~= nil then
+    if view.fillchars_request ~= profile then
+      view.saved.fillchars = view.saved.fillchars or current
+      if fillchars ~= nil then
+        M.set(view.win, "fillchars", fillchars)
+      end
+      if options.hide_eob then
+        vim.api.nvim_win_call(view.win, function()
+          vim.opt_local.fillchars:append({ eob = " " })
+        end)
+      end
+      view.applied.fillchars = M.get(view.win, "fillchars")
     end
-    vim.api.nvim_win_call(view.win, function()
-      vim.opt_local.fillchars:append({ eob = " " })
-    end)
-    view.applied.fillchars = M.get(view.win, "fillchars")
-  elseif view.saved.fillchars and values.fillchars == nil then
-    if M.get(view.win, "fillchars") == view.applied.fillchars then
+  elseif view.fillchars_request ~= nil then
+    if applied ~= nil and current == applied then
       M.set(view.win, "fillchars", view.saved.fillchars)
     end
     view.saved.fillchars, view.applied.fillchars = nil, nil
   end
+  view.fillchars_request = profile
 end
 
 function M.restore(view)

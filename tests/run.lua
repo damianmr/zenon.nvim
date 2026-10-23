@@ -227,6 +227,43 @@ test("commands enable, resize, and explicitly disable", function()
   eq(original_lines, api.nvim_buf_get_lines(buf, 0, -1, false))
 end)
 
+test("resizing keeps later window option changes", function()
+  vim.wo.scrolloff = 2
+  zenon.enable()
+  vim.wo.scrolloff = 5
+  vim.wo.fillchars = "eob:."
+  vim.cmd("Zenon 60")
+  eq(5, vim.wo.scrolloff)
+  eq("eob:.", vim.wo.fillchars)
+  zenon.disable()
+  eq(5, vim.wo.scrolloff)
+  eq("eob:.", vim.wo.fillchars)
+end)
+
+test("changing a writing option uses the latest user value as its baseline", function()
+  vim.wo.scrolloff = 2
+  zenon.enable()
+  vim.wo.scrolloff = 5
+  vim.cmd("Zenon 60")
+  vim.wo.scrolloff = 6
+  zenon.enable({ scrolloff = 7 })
+  eq(7, vim.wo.scrolloff)
+  zenon.disable()
+  eq(6, vim.wo.scrolloff)
+end)
+
+test("configured fixed-window options are restored on disable", function()
+  local win = api.nvim_get_current_win()
+  eq(false, vim.wo[win].winfixwidth)
+  eq(false, vim.wo[win].winfixheight)
+  zenon.enable({ window_options = { winfixwidth = true, winfixheight = true } })
+  eq(true, vim.wo[win].winfixwidth)
+  eq(true, vim.wo[win].winfixheight)
+  zenon.disable()
+  eq(false, vim.wo[win].winfixwidth)
+  eq(false, vim.wo[win].winfixheight)
+end)
+
 test("width uses the current split and preserves its neighbor", function()
   local host = api.nvim_get_current_win()
   vim.cmd("leftabove vsplit")

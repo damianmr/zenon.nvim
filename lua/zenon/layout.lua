@@ -248,10 +248,9 @@ function M.recover(view)
 end
 
 function M.destroy(view)
-  transaction(function()
+  local ok, failure = pcall(transaction, function()
     close_pad(view, "right")
     close_pad(view, "left")
-    options.restore(view)
     if view.highlight then
       vim.api.nvim_set_hl(0, view.highlight, {})
     end
@@ -259,6 +258,10 @@ function M.destroy(view)
       vim.api.nvim_buf_delete(view.pad_buf, { force = true })
     end
   end, view.win)
+  options.restore(view)
+  if not ok then
+    error(failure, 0)
+  end
 end
 
 function M.contiguous(view)
